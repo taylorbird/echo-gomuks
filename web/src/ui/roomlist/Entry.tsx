@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { JSX, memo, use } from "react"
 import { getRoomAvatarThumbnailURL, getSenderColor } from "@/api/media.ts"
-import { type RoomListEntry, useRoomMember } from "@/api/statestore"
+import { type RoomListEntry, usePreference, useRoomMember } from "@/api/statestore"
 import { type MemDBEvent, type MemberEventContent, type RoomID, RoomNameQuality } from "@/api/types"
 import { getDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
@@ -73,7 +73,8 @@ function renderEntry(
 	room: RoomListEntry,
 	hideAvatar: boolean | undefined,
 	KindIcon: typeof UserIcon,
-	previewSender?: MemDBEvent | null,
+	previewSender: MemDBEvent | null | undefined,
+	dmAsMention: boolean,
 ) {
 	const [previewText, croppedPreviewText] = getPreviewText(room.room_id, room.preview_event, previewSender)
 
@@ -95,7 +96,11 @@ function renderEntry(
 			</div>
 			{previewText && <div className="message-preview" title={previewText}>{croppedPreviewText}</div>}
 		</div>
-		<UnreadCount counts={room} placeholder={<div className="room-entry-unreads-placeholder" />} />
+		<UnreadCount
+			counts={room}
+			asMention={dmAsMention && Boolean(room.dm_user_id)}
+			placeholder={<div className="room-entry-unreads-placeholder" />}
+		/>
 	</>
 }
 
@@ -105,6 +110,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 	const client = use(ClientContext)!
 	const realRoom = client.store.rooms.get(room.room_id)
 	const previewSender = useRoomMember(client, realRoom, room.preview_event?.sender)
+	const dmAsMention = usePreference(client.store, null, "dm_mention_colors")
 
 	const onContextMenu = (evt: React.MouseEvent<HTMLDivElement>) => {
 		if (evt.shiftKey) {
@@ -168,7 +174,7 @@ const Entry = ({ room, isActive, hidden, hideAvatar }: RoomListEntryProps) => {
 		onContextMenu={onContextMenu}
 		data-room-id={room.room_id}
 	>
-		{renderEntry(room, hideAvatar, KindIcon, previewSender)}
+		{renderEntry(room, hideAvatar, KindIcon, previewSender, dmAsMention)}
 	</div>
 }
 

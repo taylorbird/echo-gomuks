@@ -36,6 +36,7 @@ import { ConfirmModal, ModalContext, modals } from "../modal"
 import ProfileEditor from "../modal/ProfileEditor.tsx"
 import Entry from "./Entry.tsx"
 import FakeSpace from "./FakeSpace.tsx"
+import RailDMs from "./RailDMs.tsx"
 import Space from "./Space.tsx"
 import AddCircleIcon from "@/icons/add-circle.svg?react"
 import CloseIcon from "@/icons/close.svg?react"
@@ -317,6 +318,7 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 
 	const showInviteAvatars = usePreference(client.store, null, "show_invite_avatars")
 	const unreadSection = usePreference(client.store, null, "unread_section")
+	const railUnreadDMs = usePreference(client.store, null, "rail_unread_dms")
 	const roomListFilter = client.store.roomListFilterFunc
 	/*
 	 * Which room is currently held in the Unread section despite its counts, and the
@@ -571,6 +573,10 @@ const RoomList = ({ activeRoomID, space, firstSync }: RoomListProps) => {
 			    back into the dark strip half a second later. */}
 			{band.closing ? null : renderPartable(band.id)}
 			<div className="space-sub-divider" />
+			{/* Unread DMs lead the drawer, ahead of the sub-filters. Only the opening
+			    band: a closing one is on its way out, and two copies of the same
+			    tiles would slide past each other. */}
+			{!band.closing && railUnreadDMs && <RailDMs unreadRooms={unreadRooms} placement="drawer"/>}
 			{spaceSubFilters.map(subFilter => <button
 				key={subFilter.id}
 				type="button"

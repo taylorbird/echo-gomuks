@@ -134,6 +134,11 @@ div.space-bar {
 			height: 100%;
 		}
 
+		/* People are round, places are squircles: the same split the room list draws. */
+		&.rail-dm > img.avatar {
+			border-radius: 50%;
+		}
+
 		> div.room-entry-unreads {
 			z-index: 2;
 			height: 0;
@@ -349,6 +354,45 @@ div.space-bar-divider {
 	box-shadow: 0 1px 0 rgba(var(--warm-tint-rgb), .08);
 }
 
+/* While a drawer slides shut the rail below it moves up under the cursor, which
+   would hand the second click of a space switch to a DM tile (see RailDMs). */
+div.space-bar:has(> div.space-bar-under-layer.closing) div.space-entry.rail-dm {
+	pointer-events: none;
+}
+
+/* A DM tile stands for one room, so its badge wears the room list's tiers (blue
+   unread, red mention) rather than the space palette, which sums many rooms.
+   The extra selectors outrank the .space tier rules on the shared badge. */
+div.space-entry.rail-dm > div.room-entry-unreads > div.unread-count.space {
+	background-color: var(--unread-counter-message-bg);
+	color: var(--unread-counter-blue-text);
+	box-shadow: 0 0 5px var(--unread-glow-message-near);
+
+	&.notified, &.marked-unread {
+		background-color: var(--unread-counter-notification-bg);
+		box-shadow: 0 0 5px var(--unread-glow-notify-near);
+	}
+
+	&.highlighted {
+		background-color: var(--unread-counter-highlight-bg);
+		color: var(--unread-counter-highlight-text);
+		box-shadow: 0 0 5px var(--unread-glow-highlight-near);
+	}
+
+	/* Same red dot as the DM's row in the room list. */
+	&.dm-mention {
+		width: .5rem;
+		height: .5rem;
+		min-width: 0;
+		padding: 0;
+		border-radius: 50%;
+		box-shadow: none;
+		font-size: 0;
+		color: transparent;
+		background-color: var(--unread-counter-highlight-bg);
+	}
+}
+
 button.space-sub-filter {
 	display: flex;
 	align-items: center;
@@ -552,7 +596,8 @@ div.room-entry {
 		--unread-bar-far: var(--unread-glow-notify-far);
 	}
 
-	&:has(> div.room-entry-unreads > div.unread-count.highlighted) {
+	&:has(> div.room-entry-unreads > div.unread-count.highlighted),
+	&:has(> div.room-entry-unreads > div.unread-count.dm-mention) {
 		--unread-bar: var(--unread-counter-highlight-bg);
 		--unread-bar-near: var(--unread-glow-highlight-near);
 		--unread-bar-far: var(--unread-glow-highlight-far);
@@ -1076,6 +1121,21 @@ div.room-entry > div.room-entry-unreads > div.unread-count {
 		/* Hides the digits without removing them from the accessibility tree. */
 		font-size: 0;
 		color: transparent;
+	}
+
+	/* An unread DM under "Use mention notification colors for DMs": the base
+	   tier's dot, in the mention red. No @, no count, no pulse — that is kept for
+	   being named. */
+	&.dm-mention {
+		width: .4375rem;
+		height: .4375rem;
+		min-width: 0;
+		padding: 0;
+		border-radius: 50%;
+		box-shadow: none;
+		font-size: 0;
+		color: transparent;
+		background-color: var(--unread-counter-highlight-bg);
 	}
 
 	&.highlighted {

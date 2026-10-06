@@ -150,6 +150,20 @@ export const preferences = {
 		// headers are mixed from, so the column reads as one family.
 		defaultValue: "#bd93f9",
 	}),
+	rail_unread_dms: new Preference<boolean>({
+		displayName: "Unread DMs in the sidebar",
+		description: "Show up to three unread direct messages as avatars at the top of the open space in the sidebar.",
+		category: "appearance",
+		allowedContexts: anyGlobalContext,
+		defaultValue: true,
+	}),
+	dm_mention_colors: new Preference<boolean>({
+		displayName: "Use mention notification colors for DMs",
+		description: "Show unread direct messages in the red mention colors, since a DM is written to you.",
+		category: "appearance",
+		allowedContexts: anyGlobalContext,
+		defaultValue: true,
+	}),
 	unread_section: new Preference<boolean>({
 		displayName: "Unread section",
 		description: "Show rooms with unread messages in their own section at the top of the room list.",

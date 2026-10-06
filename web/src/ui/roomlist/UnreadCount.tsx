@@ -25,9 +25,12 @@ interface UnreadCountProps {
 	space?: true
 	onClick?: (evt: React.MouseEvent<HTMLDivElement>) => void
 	placeholder?: JSX.Element
+	// Mark anything unread in the mention red, as a plain dot (the
+	// dm_mention_colors preference). The count stays in the title.
+	asMention?: boolean
 }
 
-const UnreadCount = ({ counts, space, placeholder, onClick }: UnreadCountProps) => {
+const UnreadCount = ({ counts, space, placeholder, onClick, asMention }: UnreadCountProps) => {
 	if (!counts) {
 		return placeholder
 	}
@@ -61,6 +64,9 @@ const UnreadCount = ({ counts, space, placeholder, onClick }: UnreadCountProps) 
 	}
 	if (counts.unread_highlights) {
 		classNames.push("highlighted")
+	} else if (asMention) {
+		// A red dot rather than the full mention badge: real mentions keep the @.
+		classNames.push("dm-mention")
 	}
 	return <div className={`room-entry-unreads ${space ? "floating" : ""}`}>
 		<div title={unreadCountTitle} className={classNames.join(" ")} onClick={onClick}>
