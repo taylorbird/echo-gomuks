@@ -24,6 +24,10 @@
 		// Mark the document so the CSS can inset for the traffic lights and go translucent.
 		if (window.__TAURI_INTERNALS__) {
 			document.documentElement.dataset.tauri = "true"
+			// Linux has a native title bar and no vibrancy; index.css undoes the mac chrome for it.
+			if (/Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent)) {
+				document.documentElement.dataset.platform = "linux"
+			}
 		}
 	</script>
 	<script type="module" src="src/main.tsx"></script>

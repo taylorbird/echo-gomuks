@@ -896,6 +896,27 @@ html[data-tauri] {
 }
 
 /*
+ * Linux: the window has a native title bar and an opaque ground instead of the
+ * vibrancy layer, so there are no traffic lights to clear and nothing to blur.
+ * The translucent sidebar tints above still apply; they composite onto this
+ * solid colour, which stands in for the blur they were tuned against.
+ */
+html[data-tauri][data-platform="linux"] {
+	--traffic-light-strip: 0px;
+	--space-bar-width: 5.25rem;
+
+	&, & body {
+		background-color: #e4e2e7;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		&, & body {
+			background-color: #1c1b20;
+		}
+	}
+}
+
+/*
  * Reduce motion, not remove feedback: a fade with no travel still marks the
  * transition without the sliding movement the preference is actually about.
  *
