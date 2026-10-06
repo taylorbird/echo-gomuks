@@ -47,6 +47,8 @@ import { ModalCloseContext, ModalContext, NestableModalContext, modals } from ".
 import { useRoomContext } from "../roomview/roomcontext.ts"
 import FetchedURLPreview, { extractPreviewableURLs } from "../urlpreview/FetchedURLPreview.tsx"
 import URLPreview from "../urlpreview/URLPreview.tsx"
+import YouTubeEmbed from "../urlpreview/YouTubeEmbed.tsx"
+import { YouTubeLink, parseYouTubeLink } from "../urlpreview/youtube.ts"
 import { jumpToEventInView } from "../util/jumpToEvent.tsx"
 import { useHorizontalSwipe } from "../util/swipe.ts"
 import ReadReceipts from "./ReadReceipts.tsx"
@@ -421,23 +423,45 @@ const EventURLPreviews = ({ event, room }: {
 	const client = use(ClientContext)!
 	const renderPreviews = usePreference(client.store, room, "render_url_previews")
 	const autoLoadEncrypted = usePreference(client.store, room, "auto_load_encrypted_url_previews")
+	const embedYouTube = usePreference(client.store, room, "embed_youtube_links")
+	const isEncrypted = Boolean(room.meta.current.encryption_event)
+	const bodyURLs = extractPreviewableURLs(event.content.body)
+	// The embed talks to YouTube directly, so encrypted rooms only get it when previews may auto-load there
+	const youtubeLinks = new Map<string, YouTubeLink>()
+	if (renderPreviews && embedYouTube && (!isEncrypted || autoLoadEncrypted)) {
+		for (const url of bodyURLs) {
+			const link = parseYouTubeLink(url)
+			if (link && !youtubeLinks.has(link.videoID)) {
+				youtubeLinks.set(link.videoID, link)
+			}
+		}
+	}
+	const isEmbedded = (url?: string) => {
+		const link = url ? parseYouTubeLink(url) : null
+		return link !== null && youtubeLinks.has(link.videoID)
+	}
+	const embeds = Array.from(youtubeLinks.values(), link =>
+		<YouTubeEmbed key={`youtube-${link.videoID}`} link={link}/>)
 	const previews = (event.content["com.beeper.linkpreviews"] ?? event.content["m.url_previews"]) as URLPreviewType[]
 	if (previews?.length) {
 		return <div className="url-previews">
-			{previews.map((p, i) => <URLPreview key={i} room={room} preview={p}/>)}
+			{embeds}
+			{previews
+				.filter(p => !isEmbedded(p.matched_url) && !isEmbedded(p["og:url"]))
+				.map((p, i) => <URLPreview key={i} room={room} preview={p}/>)}
 		</div>
 	}
 	if (!renderPreviews) {
 		return null
 	}
-	const urls = extractPreviewableURLs(event.content.body)
-	if (!urls.length) {
+	const urls = bodyURLs.filter(url => !isEmbedded(url))
+	if (!urls.length && !embeds.length) {
 		return null
 	}
-	const isEncrypted = Boolean(room.meta.current.encryption_event)
 	const autoLoad = Date.now() - event.timestamp < AUTO_LOAD_PREVIEW_MAX_AGE
 		&& (!isEncrypted || autoLoadEncrypted)
 	return <div className="url-previews">
+		{embeds}
 		{urls.map(url => <FetchedURLPreview key={url} url={url} room={room} autoLoad={autoLoad}/>)}
 	</div>
 }

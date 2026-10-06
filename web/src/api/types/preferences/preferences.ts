@@ -201,6 +201,14 @@ export const preferences = {
 		allowedContexts: anyContext,
 		defaultValue: true,
 	}),
+	embed_youtube_links: new Preference<boolean>({
+		displayName: "Embed YouTube videos",
+		description: "Show a playable player for YouTube links instead of a plain URL preview. "
+			+ "The title and thumbnail are fetched straight from YouTube.",
+		category: "media",
+		allowedContexts: anyContext,
+		defaultValue: true,
+	}),
 	auto_load_encrypted_url_previews: new Preference<boolean>({
 		displayName: "Auto-load URL previews in encrypted rooms",
 		description: "Whether to automatically fetch previews for links in recent messages in encrypted rooms."
