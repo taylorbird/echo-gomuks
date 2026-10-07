@@ -38,10 +38,12 @@ if ! orb -m "$MACHINE" sh -c 'test -x "$HOME/.cargo/bin/cargo" && test -x /usr/l
 fi
 
 log "building in $MACHINE"
-orb -m "$MACHINE" env REPO_ROOT="$REPO_ROOT" TRIPLE="$TRIPLE" OUT="$OUT" \
-	TAURI_SIGNING_PRIVATE_KEY="${TAURI_SIGNING_PRIVATE_KEY:-}" \
-	TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" \
-	bash -s <<'EOF'
+# The signing key and its password ride in on stdin, ahead of the build script, rather than as
+# arguments: anything on the orb command line is visible to every process on the Mac via ps.
+{
+printf 'export TAURI_SIGNING_PRIVATE_KEY=%q\n' "${TAURI_SIGNING_PRIVATE_KEY:-}"
+printf 'export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=%q\n' "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
+cat <<'EOF'
 set -euo pipefail
 export PATH="$HOME/.cargo/bin:/usr/local/go/bin:/opt/node/bin:$PATH"
 SRC="$HOME/echo-src"
@@ -73,13 +75,16 @@ if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
 	unset TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 	OVERRIDE='{"build":{"beforeBuildCommand":""},"bundle":{"createUpdaterArtifacts":false}}'
 fi
+BUNDLE="$SRC/web/src-tauri/target/release/bundle"
+# The bundler leaves earlier versions' packages in place; clear them so only this build is copied out.
+rm -rf "$BUNDLE"
 ./node_modules/.bin/tauri build --config "$OVERRIDE"
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
-BUNDLE="$SRC/web/src-tauri/target/release/bundle"
 cp "$BUNDLE"/appimage/*.AppImage* "$OUT/"
 cp "$BUNDLE"/deb/*.deb "$OUT/"
 ls -la "$OUT"
 EOF
+} | orb -m "$MACHINE" env REPO_ROOT="$REPO_ROOT" TRIPLE="$TRIPLE" OUT="$OUT" bash -s
 log "done: $OUT"
