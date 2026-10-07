@@ -8,6 +8,8 @@ describe("parseYouTubeLink", () => {
 		expect(parseYouTubeLink("https://youtube.com/shorts/R0KZIPOqITw")?.videoID).toBe("R0KZIPOqITw")
 		expect(parseYouTubeLink("https://m.youtube.com/live/R0KZIPOqITw?feature=share")?.videoID).toBe("R0KZIPOqITw")
 		expect(parseYouTubeLink("https://music.youtube.com/watch?v=dQw4w9WgXcQ")?.isMusic).toBe(true)
+		expect(parseYouTubeLink("https://youtube.com/shorts/R0KZIPOqITw")?.isShort).toBe(true)
+		expect(parseYouTubeLink("https://youtu.be/dQw4w9WgXcQ")?.isShort).toBe(false)
 	})
 
 	it("reads timestamps", () => {

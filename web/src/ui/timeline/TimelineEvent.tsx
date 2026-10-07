@@ -440,9 +440,19 @@ const EventURLPreviews = ({ event, room }: {
 		const link = url ? parseYouTubeLink(url) : null
 		return link !== null && youtubeLinks.has(link.videoID)
 	}
-	const embeds = Array.from(youtubeLinks.values(), link =>
-		<YouTubeEmbed key={`youtube-${link.videoID}`} link={link}/>)
+	const isSameVideo = (link: YouTubeLink, url?: string) =>
+		url !== undefined && parseYouTubeLink(url)?.videoID === link.videoID
 	const previews = (event.content["com.beeper.linkpreviews"] ?? event.content["m.url_previews"]) as URLPreviewType[]
+	const autoLoad = Date.now() - event.timestamp < AUTO_LOAD_PREVIEW_MAX_AGE
+		&& (!isEncrypted || autoLoadEncrypted)
+	// If YouTube has nothing for a video, the link gets the preview it would have had anyway
+	const embeds = Array.from(youtubeLinks.values(), link => {
+		const embedded = previews?.find(p => isSameVideo(link, p.matched_url) || isSameVideo(link, p["og:url"]))
+		const fallback = embedded
+			? <URLPreview room={room} preview={embedded}/>
+			: previews?.length ? null : <FetchedURLPreview url={link.url} room={room} autoLoad={autoLoad}/>
+		return <YouTubeEmbed key={`youtube-${link.videoID}`} link={link} fallback={fallback}/>
+	})
 	if (previews?.length) {
 		return <div className="url-previews">
 			{embeds}
@@ -458,8 +468,6 @@ const EventURLPreviews = ({ event, room }: {
 	if (!urls.length && !embeds.length) {
 		return null
 	}
-	const autoLoad = Date.now() - event.timestamp < AUTO_LOAD_PREVIEW_MAX_AGE
-		&& (!isEncrypted || autoLoadEncrypted)
 	return <div className="url-previews">
 		{embeds}
 		{urls.map(url => <FetchedURLPreview key={url} url={url} room={room} autoLoad={autoLoad}/>)}

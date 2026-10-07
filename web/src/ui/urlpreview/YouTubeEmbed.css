@@ -45,6 +45,15 @@ div.youtube-embed {
 		}
 	}
 
+	/* Shorts are portrait: a narrower card with a tall frame instead of a letterboxed one. */
+	&.short {
+		width: min(100%, 15rem);
+
+		> div.youtube-embed-frame {
+			aspect-ratio: 9 / 16;
+		}
+	}
+
 	> div.youtube-embed-frame {
 		position: relative;
 		aspect-ratio: 16 / 9;

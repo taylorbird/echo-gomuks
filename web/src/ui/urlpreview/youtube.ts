@@ -17,6 +17,8 @@ export interface YouTubeLink {
 	videoID: string
 	start?: number
 	isMusic: boolean
+	// Shorts are portrait, so they get a tall frame instead of the 16:9 one
+	isShort: boolean
 	url: string
 }
 
@@ -65,6 +67,7 @@ export function parseYouTubeLink(url: string): YouTubeLink | null {
 		videoID,
 		start: parseTimestamp(parsed.searchParams.get("t") ?? parsed.searchParams.get("start")),
 		isMusic: host === "music.youtube.com",
+		isShort: isYouTubeHost && parsed.pathname.startsWith("/shorts/"),
 		url,
 	}
 }
