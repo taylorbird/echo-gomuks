@@ -14,99 +14,161 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { MatrixCapabilities } from "matrix-widget-api"
-import { use, useState } from "react"
+import React, { use, useState } from "react"
 import { ModalCloseContext } from "../modal"
+import Toggle from "../util/Toggle.tsx"
+import WidgetsIcon from "@/icons/widgets.svg?react"
+import "./PermissionPrompt.css"
+import "../modal/ConfirmModal.css"
+
+export interface PermissionPromptWidget {
+	name?: string
+	url?: string
+}
 
 interface PermissionPromptProps {
 	capabilities: Set<string>
+	widget?: PermissionPromptWidget
 	onConfirm: (approvedCapabilities: Set<string>) => void
 }
 
-const getCapabilityName = (capability: string): string => {
-	const paramIdx = capability.indexOf(":")
-	const capabilityID = paramIdx === -1 ? capability : capability.slice(0, paramIdx)
-	const parameter = paramIdx === -1 ? null : capability.slice(paramIdx + 1)
-
-	// Map capability IDs to human-readable names
-	const capabilityNames: Record<string, string> = {
-		[MatrixCapabilities.MSC2931Navigate]: "Navigate to other rooms",
-		[MatrixCapabilities.MSC3846TurnServers]: "Request TURN servers from the homeserver",
-		[MatrixCapabilities.MSC4157SendDelayedEvent]: "Send delayed events",
-		[MatrixCapabilities.MSC4157UpdateDelayedEvent]: "Update delayed events",
-		[MatrixCapabilities.MSC4039UploadFile]: "Upload files",
-		[MatrixCapabilities.MSC4039DownloadFile]: "Download files",
-		"org.matrix.msc2762.timeline": "Read room history",
-		"org.matrix.msc2762.send.event": "Send timeline events",
-		"org.matrix.msc2762.receive.event": "Receive timeline events",
-		"org.matrix.msc2762.send.state_event": "Send state events",
-		"org.matrix.msc2762.receive.state_event": "Receive state events",
-		"org.matrix.msc3819.send.to_device": "Send to-device events",
-		"org.matrix.msc3819.receive.to_device": "Receive to-device events",
-		"org.matrix.msc4515.rtc_transports": "Request RTC transports from the homeserver",
-	}
-
-	const name = capabilityNames[capabilityID] || capabilityID
-
-	if (parameter) {
-		return `${name} (${parameter})`
-	}
-
-	return name
+// Capabilities that are complete on their own, with no event type parameter
+const plainCapabilities: Record<string, string> = {
+	[MatrixCapabilities.MSC2931Navigate]: "Open other rooms",
+	[MatrixCapabilities.MSC3846TurnServers]: "Use your homeserver's call relay servers",
+	[MatrixCapabilities.MSC4157SendDelayedEvent]: "Schedule messages",
+	[MatrixCapabilities.MSC4157UpdateDelayedEvent]: "Change scheduled messages",
+	[MatrixCapabilities.MSC4039UploadFile]: "Upload files",
+	[MatrixCapabilities.MSC4039DownloadFile]: "Download files",
+	"org.matrix.msc2762.timeline": "Read room history",
+	"org.matrix.msc4515.rtc_transports": "Use your homeserver's call servers",
 }
 
-const PermissionPrompt = ({ capabilities, onConfirm }: PermissionPromptProps) => {
-	const [selectedCapabilities, setSelectedCapabilities] = useState<Set<string>>(() => new Set(capabilities))
+// Capabilities scoped to an event type, as the verb the label starts with
+const scopedVerbs: Record<string, string> = {
+	"org.matrix.msc2762.send.event": "Send",
+	"org.matrix.msc2762.receive.event": "Read",
+	"org.matrix.msc2762.send.state_event": "Change",
+	"org.matrix.msc2762.receive.state_event": "Read",
+	"org.matrix.msc3819.send.to_device": "Send device messages:",
+	"org.matrix.msc3819.receive.to_device": "Receive device messages:",
+}
+
+const eventNouns: Record<string, string> = {
+	"m.room.message": "messages",
+	"m.room.message#m.text": "text messages",
+	"m.room.message#m.emote": "emotes",
+	"m.room.message#m.notice": "bot notices",
+	"m.room.message#m.image": "images",
+	"m.room.message#m.video": "videos",
+	"m.room.message#m.audio": "audio",
+	"m.room.message#m.file": "files",
+	"m.reaction": "reactions",
+	"m.room.redaction": "message removals",
+	"m.sticker": "stickers",
+	"m.room.encrypted": "encrypted messages",
+	"m.room.name": "the room name",
+	"m.room.topic": "the room topic",
+	"m.room.avatar": "the room picture",
+	"m.room.member": "room members",
+	"m.room.power_levels": "member permissions",
+	"m.room.create": "room details",
+	"im.vector.modular.widgets": "widgets",
+	"org.matrix.msc3401.call.member": "call participants",
+	"m.call.member": "call participants",
+}
+
+// A plain-language label, plus the technical name it came from (shown underneath for anyone
+// who wants to know exactly what is being granted).
+function describeCapability(capability: string): { label: string, detail?: string } {
+	if (plainCapabilities[capability]) {
+		return { label: plainCapabilities[capability] }
+	}
+	const paramIdx = capability.indexOf(":")
+	const capabilityID = paramIdx === -1 ? capability : capability.slice(0, paramIdx)
+	const parameter = paramIdx === -1 ? "" : capability.slice(paramIdx + 1)
+	const verb = scopedVerbs[capabilityID]
+	if (!verb || !parameter) {
+		return { label: capability }
+	}
+	// State event capabilities may pin a state key after a pipe
+	const [eventType, stateKey] = parameter.split("|", 2)
+	const noun = eventNouns[eventType] ?? eventType
+	let label = `${verb} ${noun}`
+	if (stateKey) {
+		label += ` (${stateKey})`
+	}
+	return { label, detail: parameter }
+}
+
+function widgetHost(url?: string): string | undefined {
+	if (!url) {
+		return undefined
+	}
+	try {
+		return new URL(url).hostname
+	} catch {
+		return undefined
+	}
+}
+
+const PermissionPrompt = ({ capabilities, widget, onConfirm }: PermissionPromptProps) => {
+	const [selected, setSelected] = useState<Set<string>>(() => new Set(capabilities))
 	const closeModal = use(ModalCloseContext)
 
-	const handleToggleCapability = (capability: string) => {
-		const newCapabilities = new Set(selectedCapabilities)
-		if (newCapabilities.has(capability)) {
-			newCapabilities.delete(capability)
+	const toggle = (capability: string) => {
+		const next = new Set(selected)
+		if (next.has(capability)) {
+			next.delete(capability)
 		} else {
-			newCapabilities.add(capability)
+			next.add(capability)
 		}
-		setSelectedCapabilities(newCapabilities)
+		setSelected(next)
 	}
 
-	const doConfirm = () => {
-		onConfirm(selectedCapabilities)
+	const onSubmit = (evt: React.FormEvent) => {
+		evt.preventDefault()
+		onConfirm(selected)
 		closeModal()
 	}
 
-	const doReject = () => {
+	const denyAll = () => {
 		onConfirm(new Set())
 		closeModal()
 	}
 
-	return <>
-		<h2>Widget Permissions</h2>
-		<p>This widget is requesting the following permissions:</p>
-
-		<div className="capability-list">
-			{Array.from(capabilities).map((capability) => (
-				<div key={capability} className="capability-item">
-					<label>
-						<input
-							type="checkbox"
-							checked={selectedCapabilities.has(capability)}
-							onChange={() => handleToggleCapability(capability)}
-						/>
-						{getCapabilityName(capability)}
+	const host = widgetHost(widget?.url)
+	const name = widget?.name || host || "This widget"
+	return <form className="confirm-message-modal permission-prompt" onSubmit={onSubmit}>
+		<h3>Allow this widget?</h3>
+		<div className="permission-body">
+			<div className="permission-widget">
+				<WidgetsIcon className="permission-widget-icon"/>
+				<div className="permission-widget-name">{name}</div>
+				{host && host !== name && <div className="permission-widget-host">{host}</div>}
+			</div>
+			<div className="permission-list">
+				<p className="permission-intro">It is asking to:</p>
+				{Array.from(capabilities, (capability, i) => {
+					const { label, detail } = describeCapability(capability)
+					const id = `widget-permission-${i}`
+					return <label key={capability} className="permission-item" htmlFor={id}>
+						<span className="permission-text">
+							<span className="permission-label">{label}</span>
+							{detail && <code className="permission-detail">{detail}</code>}
+						</span>
+						<Toggle id={id} checked={selected.has(capability)} onChange={() => toggle(capability)}/>
 					</label>
-				</div>
-			))}
+				})}
+			</div>
 		</div>
-
-		<div className="permission-actions">
-			<button onClick={doReject}>Reject all</button>
-			<button
-				onClick={doConfirm}
-				className="confirm-button"
-			>
-				Accept selected
+		<div className="confirm-buttons">
+			<button type="button" className="permission-deny" onClick={denyAll}>Deny all</button>
+			<button type="submit" className="permission-allow">
+				{selected.size === capabilities.size ? "Allow" : "Allow selected"}
 			</button>
 		</div>
-	</>
+	</form>
 }
 
 export default PermissionPrompt

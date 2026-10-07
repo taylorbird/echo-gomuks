@@ -57,17 +57,3 @@ div.widget-popout-iframe-container {
 	}
 }
 
-div.permission-prompt {
-	> h2 {
-		margin: 0;
-	}
-
-	> div.permission-actions {
-		display: flex;
-		justify-content: space-between;
-
-		> button {
-			padding: .5rem 1rem;
-		}
-	}
-}
