@@ -41,6 +41,11 @@ const TimelineView = () => {
 	const oldestTimelineRow = timeline[0]?.timeline_rowid
 	const oldScrollHeight = useRef(0)
 	const focused = useFocus()
+	// Bumped each time the user scrolls down onto the newest message. scrolledToBottom
+	// itself is a plain field, so without this, reading a room by scrolling down never
+	// re-ran the read receipt effect below and the room stayed unread until the next
+	// message or window focus change.
+	const [bottomArrivals, setBottomArrivals] = useState(0)
 	usePreferences(client.store, room) // We pass the preference object to renderTimelineList
 
 	// When the user scrolls the timeline manually, remember if they were at the bottom,
@@ -50,7 +55,11 @@ const TimelineView = () => {
 			return
 		}
 		const timelineView = timelineViewRef.current
-		roomCtx.scrolledToBottom = timelineView.scrollTop + timelineView.clientHeight + 1 >= timelineView.scrollHeight
+		const atBottom = timelineView.scrollTop + timelineView.clientHeight + 1 >= timelineView.scrollHeight
+		if (atBottom && !roomCtx.scrolledToBottom) {
+			setBottomArrivals(count => count + 1)
+		}
+		roomCtx.scrolledToBottom = atBottom
 	}
 	// Save the scroll height prior to updating the timeline, so that we can adjust the scroll position if needed.
 	if (timelineViewRef.current) {
@@ -89,7 +98,7 @@ const TimelineView = () => {
 				},
 			)
 		}
-	}, [focused, client, roomCtx, room, timeline])
+	}, [focused, bottomArrivals, client, roomCtx, room, timeline])
 	useEffect(() => {
 		const topElem = topRef.current
 		if (!topElem || !room.hasMoreHistory) {
