@@ -23,7 +23,7 @@ import {
 } from "@/api/statestore"
 import { EventID, MemDBEvent } from "@/api/types"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
-import { getDisplayname } from "@/util/validation.ts"
+import { getDisplayname, getRealDisplayname } from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { RoomContextData } from "../roomview/roomcontext.ts"
@@ -128,7 +128,11 @@ export const ReplyBody = ({
 			jumpToEvent(roomCtx, event.event_id)
 		}
 	}
-	const renderMemberEventDisplayname = getDisplayname(event.sender, renderMemberEvtContent)
+	// A per-message profile is someone other than the relaying account, so that
+	// account's MSC4529 nickname must not stand in for it.
+	const renderMemberEventDisplayname = perMessageSender
+		? getRealDisplayname(event.sender, renderMemberEvtContent)
+		: getDisplayname(event.sender, renderMemberEvtContent)
 	const mainMemberEventDisplayname = getDisplayname(event.sender, memberEvtContent)
 	return <blockquote
 		className={classNames.join(" ")}

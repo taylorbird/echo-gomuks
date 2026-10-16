@@ -1,0 +1,154 @@
+/* Builds on ProfileEditor.css: same two columns and button pair. */
+
+/* The same edge as the profile card it opens over. */
+div.overlay.modal > div.modal-box.profile-override-box {
+	border: 1px solid color-mix(in srgb, var(--text-color) 32%, var(--background-color));
+
+	/* The inner wrapper scrolls by default, which clipped the progress bar laid
+	   over the box's padding. These pop-ups are short and never need to scroll. */
+	> div.modal-box-inner {
+		overflow: visible;
+	}
+}
+
+form.profile-override-editor {
+	position: relative;
+
+	/* The nickname pop-up shows the picture without offering to change it. */
+	div.profile-avatar-column > div.profile-avatar {
+		width: 6rem;
+		height: 6rem;
+		border-radius: 50%;
+		overflow: hidden;
+
+		> img {
+			width: 100%;
+			height: 100%;
+			object-fit: cover;
+		}
+	}
+
+	div.profile-fields {
+		gap: .625rem;
+
+		> button.profile-override-choose {
+			align-self: flex-start;
+			font-weight: 600;
+			padding: .5rem 1rem;
+			border-radius: .375rem;
+			color: var(--text-color);
+			box-shadow: inset 0 0 0 1px var(--button-hover-color);
+
+			&:hover, &:focus-visible {
+				background: var(--light-hover-color);
+			}
+		}
+	}
+
+	/* Going back to their own sits apart from the Cancel/Save pair on the right. */
+	> div.confirm-buttons > button.profile-override-remove {
+		margin-right: auto;
+	}
+
+	/* What the override means, once, above the buttons: apart from the field so it
+	   doesn't read as help text for it. */
+	> div.profile-override-notice {
+		display: flex;
+		align-items: flex-start;
+		gap: .5rem;
+		padding: .625rem .75rem;
+		border-radius: .5rem;
+		background: var(--light-hover-color);
+		font-size: .8125rem;
+		/* Not --semisecondary-text-color: in dark mode that's a peach accent, which made
+		   the notice read as a second error line. */
+		color: color-mix(in srgb, var(--text-color) 72%, var(--background-color));
+
+		> svg {
+			flex-shrink: 0;
+			width: 1.125rem;
+			height: 1.125rem;
+			fill: currentColor;
+			color: var(--secondary-text-color);
+		}
+
+		> p {
+			margin: 0;
+		}
+	}
+
+	/* While uploading, the picture itself says so. */
+	button.profile-avatar > span.profile-avatar-busy {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 .5rem;
+		text-align: center;
+		background-color: rgba(0, 0, 0, .55);
+		color: #fff;
+		font-size: .75rem;
+		font-weight: 600;
+	}
+
+	/* A 3px accent bar sweeping along the bottom edge while anything is saving. */
+	> div.profile-override-progress {
+		/* Out over the modal box's 1rem padding, flush with its rounded bottom. */
+		position: absolute;
+		left: -1rem;
+		right: -1rem;
+		bottom: -1rem;
+		height: 3px;
+		overflow: hidden;
+		border-radius: 0 0 1rem 1rem;
+		background: color-mix(in srgb, var(--primary-color) 25%, transparent);
+
+		&::after {
+			content: "";
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			width: 35%;
+			background: var(--primary-color-dark);
+			animation: profile-override-sweep 1.1s ease-in-out infinite;
+		}
+
+		@media (prefers-reduced-motion: reduce) {
+			html:not([data-ignore-reduce-motion]) &::after {
+				animation: none;
+				width: 100%;
+				opacity: .6;
+			}
+		}
+	}
+
+	/* A file is being dragged over the pop-up: the picture is where it goes. */
+	&.dropping button.profile-avatar {
+		outline: 2px dashed var(--primary-color-dark);
+		outline-offset: 3px;
+	}
+
+	button.profile-avatar > span.profile-avatar-drop {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 0 .5rem;
+		text-align: center;
+		background-color: rgba(0, 0, 0, .55);
+		color: #fff;
+		font-size: .75rem;
+		font-weight: 600;
+	}
+}
+
+@keyframes profile-override-sweep {
+	from {
+		left: -35%;
+	}
+	to {
+		left: 100%;
+	}
+}

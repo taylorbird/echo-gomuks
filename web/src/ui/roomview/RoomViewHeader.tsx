@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use } from "react"
 import { getRoomAvatarThumbnailURL, getRoomAvatarURL } from "@/api/media.ts"
+import { getRoomNameWithOverride, useProfileOverrides } from "@/api/profileoverrides.ts"
 import { RoomStateStore } from "@/api/statestore"
 import { getModalStyleFromButton } from "@/ui/menu"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
@@ -40,6 +41,9 @@ interface RoomViewHeaderProps {
 
 const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 	const roomMeta = useEventAsState(room.meta)
+	// A DM named after its member shows that member's MSC4529 nickname.
+	useProfileOverrides()
+	const roomName = getRoomNameWithOverride(roomMeta) ?? roomMeta.room_id
 	const mainScreen = use(MainScreenContext)
 	const openNestableModal = use(NestableModalContext)
 	const openSettings = () => {
@@ -128,9 +132,9 @@ const RoomViewHeader = ({ room, activePanel }: RoomViewHeaderProps) => {
 		<div className="room-name-and-topic" data-tauri-drag-region="deep">
 			<div
 				className="room-name"
-				title={roomMeta.name ?? roomMeta.room_id}
+				title={roomName}
 			>
-				{roomMeta.name ?? roomMeta.room_id}
+				{roomName}
 			</div>
 			{/* Both lines are clipped to one line with an ellipsis, so the full text
 			    is only reachable on hover. */}

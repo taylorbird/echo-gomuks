@@ -16,9 +16,10 @@
 import { isCheatActive } from "@/util/cheats.ts"
 import { parseMXC } from "@/util/validation.ts"
 import { BACKEND_URL } from "./backend.ts"
+import { applyProfileOverride, getRoomAvatarWithOverride, getRoomNameWithOverride } from "./profileoverrides.ts"
 import { createSenderColorAllocator, localSenderColorStorage } from "./sendercolor.ts"
 import { fakeGomuksMember } from "./statestore"
-import { ContentURI, RoomID, UserID, UserProfile } from "./types"
+import { ContentURI, RoomID, RoomNameQuality, UserID, UserProfile } from "./types"
 
 export const getMediaURL = (mxc?: string, encrypted: boolean = false): string | undefined => {
 	const [server, mediaID] = parseMXC(mxc)
@@ -178,6 +179,22 @@ export const getAvatarURL = (
 	if (userID === fakeGomuksMember.sender && content == fakeGomuksMember.content) {
 		return "gomuks.png"
 	}
+	// The user's MSC4529 override, if any, replaces the picture and the letter tile.
+	return makeAvatarURL(userID, applyProfileOverride(userID, content), thumbnail, forceFallback, backgroundColor)
+}
+
+// For previews of what an override would look like, which must not have the
+// current override applied on top.
+export const getAvatarThumbnailURLWithoutOverride = (userID: UserID, content?: UserProfile | null): string =>
+	makeAvatarURL(userID, content, true, false, getUserColor(userID))
+
+function makeAvatarURL(
+	userID: UserID,
+	content: UserProfile | null | undefined,
+	thumbnail: boolean,
+	forceFallback: boolean,
+	backgroundColor: string,
+): string {
 	const fallbackCharacter = getFallbackCharacter(content?.displayname, 0) || getFallbackCharacter(userID, 1)
 	const [server, mediaID] = parseMXC(content?.avatar_file?.url ?? content?.avatar_url)
 	if (!mediaID || forceFallback) {
@@ -201,8 +218,10 @@ export const getAvatarThumbnailURL = (
 interface RoomForAvatarURL {
 	room_id: RoomID
 	name?: string
+	name_quality?: RoomNameQuality
 	dm_user_id?: UserID
 	avatar?: ContentURI
+	explicit_avatar?: boolean
 	avatar_url?: ContentURI
 }
 
@@ -212,10 +231,13 @@ export const getRoomAvatarURL = (
 	thumbnail = false,
 	forceFallback = false,
 ): string | undefined => {
-	return getAvatarURL(room.dm_user_id || room.room_id, {
-		displayname: room.name,
-		avatar_url: avatarOverride ?? room.avatar ?? room.avatar_url,
-	}, thumbnail, forceFallback)
+	// Not getAvatarURL: a DM's own explicit avatar must not be replaced by the
+	// other member's override. The meta helpers know when it may be.
+	const userID = room.dm_user_id || room.room_id
+	return makeAvatarURL(userID, {
+		displayname: getRoomNameWithOverride(room),
+		avatar_url: avatarOverride ?? getRoomAvatarWithOverride(room) ?? room.avatar_url,
+	}, thumbnail, forceFallback, getUserColor(userID))
 }
 
 export const getRoomAvatarThumbnailURL = (

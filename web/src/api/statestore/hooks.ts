@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { useEffect, useMemo, useReducer, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
+import { useProfileOverrides } from "@/api/profileoverrides.ts"
 import type { CustomEmojiPack } from "@/util/emoji"
 import { useEventAsState } from "@/util/eventdispatcher.ts"
 import type {
@@ -90,6 +91,8 @@ export function useRoomState(
 export function useRoomMember(
 	client: Client | undefined | null, room: RoomStateStore | undefined, userID: UserID | undefined,
 ): MemDBEvent | null {
+	// Callers render names and avatars from this, and those read MSC4529 overrides.
+	useProfileOverrides()
 	const evt = useRoomState(room, "m.room.member", userID)
 	if (!evt && client && room && userID) {
 		client.requestMemberEvent(room, userID)
@@ -133,6 +136,7 @@ export function applyPerMessageSender(
 export function useMultipleRoomMembers(
 	client: Client, room: RoomStateStore, userIDs: UserID[],
 ): [UserID, MemberEventContent | null][] {
+	useProfileOverrides()
 	const [, forceUpdate] = useReducer(x => x + 1, 0)
 	let promiseAwaited = false
 	return userIDs.map(userID => {

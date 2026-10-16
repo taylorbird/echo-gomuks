@@ -193,10 +193,13 @@ export const EmojiAutocompleter = ({ params, room, ...rest }: AutocompleterProps
 }
 
 const userFuncs = {
+	// The real name, not the shown one: the mention text is sent to the room, and
+	// an MSC4529 nickname is private.
 	getText: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
-		? user.userID : mentionLabel(user.displayName) + " ",
-	getExtraState: (user: AutocompleteMemberEntry, state: ComposerState) => state.command
-		? {} : { mentions: addMention(state.mentions, { label: mentionLabel(user.displayName), userID: user.userID }) },
+		? user.userID : mentionLabel(user.realDisplayName) + " ",
+	getExtraState: (user: AutocompleteMemberEntry, state: ComposerState) => state.command ? {} : {
+		mentions: addMention(state.mentions, { label: mentionLabel(user.realDisplayName), userID: user.userID }),
+	},
 	getKey: (user: AutocompleteMemberEntry) => user.userID,
 	render: (user: AutocompleteMemberEntry) => <>
 		<img

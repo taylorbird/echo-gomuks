@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { RefObject, createContext, createRef, use } from "react"
+import { getProfileOverride } from "@/api/profileoverrides.ts"
 import { RoomStateStore } from "@/api/statestore"
-import { EventID, MemDBEvent, RoomType, UserID } from "@/api/types"
+import { EventID, MemDBEvent, RoomType, UserID, UserProfile } from "@/api/types"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
+import { getRealDisplayname } from "@/util/validation.ts"
 
 const noop = (name: string) => () => {
 	console.warn(`${name} called before initialization`)
@@ -62,7 +64,12 @@ export class RoomContextData {
 		if (!targetUser) {
 			return
 		}
-		const targetUserName = evt.currentTarget.innerText
+		// The member's real name rather than the clicked text, which may be an
+		// MSC4529 nickname that must not be sent to the room.
+		const memberEvt = this.store.getStateEvent("m.room.member", targetUser)
+		const targetUserName = memberEvt || getProfileOverride(targetUser as UserID)
+			? getRealDisplayname(targetUser, memberEvt?.content as UserProfile | undefined)
+			: evt.currentTarget.innerText
 		this.insertMention(targetUserName, targetUser)
 	}
 }

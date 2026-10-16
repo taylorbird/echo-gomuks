@@ -24,7 +24,7 @@ import { memo } from "react"
 import type Client from "@/api/client"
 import type { RoomStateStore, WidgetListener } from "@/api/statestore"
 import type { MemDBEvent, RoomID, SyncToDevice } from "@/api/types"
-import { getDisplayname } from "@/util/validation"
+import { getRealDisplayname } from "@/util/validation"
 import PermissionPrompt, { PermissionPromptWidget } from "./PermissionPrompt"
 import { memDBEventToIRoomEvent } from "./util"
 import GomuksWidgetDriver from "./widgetDriver"
@@ -160,7 +160,8 @@ const makeWidget = ({ room, info, client, noPermissionPrompt }: WidgetProps) => 
 		widgetRoomId: room.roomID,
 		currentUserId: client.userID,
 		deviceId: client.state.current?.is_logged_in ? client.state.current.device_id : "",
-		userDisplayName: getDisplayname(client.userID, room.getStateEvent("m.room.member", client.userID)?.content),
+		// The widget may publish this to the room (calls do), so never an override.
+		userDisplayName: getRealDisplayname(client.userID, room.getStateEvent("m.room.member", client.userID)?.content),
 		clientId: "fi.mau.gomuks",
 		clientTheme: window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
 		clientLanguage: navigator.language,

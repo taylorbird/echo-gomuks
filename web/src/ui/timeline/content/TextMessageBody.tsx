@@ -15,7 +15,8 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useLayoutEffect, useRef } from "react"
 import { getSenderColor } from "@/api/media.ts"
-import { MessageEventContent } from "@/api/types"
+import { getProfileOverride, useProfileOverrides } from "@/api/profileoverrides.ts"
+import { MessageEventContent, UserID } from "@/api/types"
 import { ensureString, getDisplayname, parseMatrixURI } from "@/util/validation.ts"
 import EventContentProps from "./props.ts"
 
@@ -172,9 +173,21 @@ const TextMessageBody = ({ event, sender }: EventContentProps) => {
 	// User pills come from the backend as plain HTML, so React never sees who they point at. Give
 	// each one the colour that person's name has in this room; the CSS tints the pill with it.
 	// Pills naming you are skipped: they keep the red highlight from StylePreferences.
+	const profileOverrides = useProfileOverrides()
 	useLayoutEffect(() => {
 		for (const pill of htmlRef.current?.querySelectorAll<HTMLAnchorElement>("a.hicli-matrix-uri-user") ?? []) {
 			const userID = parseMatrixURI(pill.href)?.identifier
+			// An MSC4529 nickname replaces the name the sender wrote, the way it does
+			// everywhere else. The written text is kept on the pill so that removing
+			// the nickname brings it back (React won't re-set this HTML on its own).
+			const override = userID?.startsWith("@") ? getProfileOverride(userID as UserID)?.displayname : undefined
+			if (typeof override === "string" && override) {
+				pill.dataset.writtenText ??= pill.textContent ?? ""
+				pill.textContent = override
+			} else if (pill.dataset.writtenText !== undefined) {
+				pill.textContent = pill.dataset.writtenText
+				delete pill.dataset.writtenText
+			}
 			// The link text is usually a bare display name. When the sender's client already
 			// wrote an "@" (or used the raw user ID), don't add a second one.
 			pill.classList.toggle("mention-at", !pill.textContent?.trimStart().startsWith("@"))
@@ -182,7 +195,7 @@ const TextMessageBody = ({ event, sender }: EventContentProps) => {
 				pill.style.setProperty("--mention-color", getSenderColor(event.room_id, userID))
 			}
 		}
-	}, [sanitizedHTML, event.room_id])
+	}, [sanitizedHTML, event.room_id, profileOverrides])
 	const classNames = ["message-text"]
 	let eventSenderName: string | undefined
 	if (content.msgtype === "m.notice") {

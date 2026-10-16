@@ -14,6 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { getAvatarThumbnailURL } from "@/api/media.ts"
+import {
+	PROFILE_OVERRIDES_STABLE,
+	PROFILE_OVERRIDES_UNSTABLE,
+	clearProfileOverrides,
+	getRoomAvatarWithOverride,
+	getRoomNameWithOverride,
+	loadProfileOverrides,
+} from "@/api/profileoverrides.ts"
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
 import { CustomEmojiPack } from "@/util/emoji"
 import { NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
@@ -68,6 +76,11 @@ export interface RoomListEntry {
 	is_invite?: boolean
 	favorite_order?: number
 	low_priority?: boolean
+}
+
+// A DM shown under a nickname still turns up when searching for the real name.
+function makeRoomSearchName(name: string, realName: string | undefined): string {
+	return toSearchableString(realName && realName !== name ? `${name} ${realName}` : name)
 }
 
 function alphabeticalSort(r1: RoomListEntry, r2: RoomListEntry): number {
@@ -359,7 +372,7 @@ export class StateStore {
 		}
 		const preview_event = room?.preferences.room_list_preview
 			? room?.eventsByRowID.get(meta.preview_event_rowid) : undefined
-		const name = meta.name ?? "Unnamed room"
+		const name = getRoomNameWithOverride(meta) ?? "Unnamed room"
 		const tags = room?.accountData.get("m.tag")?.tags
 		const favoriteTag = tags?.["m.favourite"]
 		const lowPriority = !!tags?.["m.lowpriority"]
@@ -369,8 +382,8 @@ export class StateStore {
 			sorting_timestamp: meta.sorting_timestamp,
 			preview_event,
 			name,
-			search_name: toSearchableString(name),
-			avatar: meta.avatar,
+			search_name: makeRoomSearchName(name, meta.name),
+			avatar: getRoomAvatarWithOverride(meta),
 			unread_messages: lowPriority && this.preferences.mute_low_priority ? 0 : meta.unread_messages,
 			unread_notifications: meta.unread_notifications,
 			unread_highlights: meta.unread_highlights,
@@ -510,7 +523,11 @@ export class StateStore {
 				this.switchRoom?.(roomID)
 			}
 		}
+		let profileOverridesChanged = false
 		for (const ad of Object.values(sync.account_data ?? {})) {
+			if (ad.type === PROFILE_OVERRIDES_STABLE || ad.type === PROFILE_OVERRIDES_UNSTABLE) {
+				profileOverridesChanged = true
+			}
 			if (ad.type === "io.element.recent_emoji") {
 				this.#frequentlyUsedEmoji = null
 			} else if (ad.type === "fi.mau.gomuks.preferences") {
@@ -520,6 +537,12 @@ export class StateStore {
 			this.accountData.set(ad.type, ad.content)
 			this.accountDataSubs.notify(ad.type)
 			this.stateCache?.setAccountData(ad)
+		}
+		if (profileOverridesChanged) {
+			loadProfileOverrides(
+				this.accountData.get(PROFILE_OVERRIDES_STABLE),
+				this.accountData.get(PROFILE_OVERRIDES_UNSTABLE),
+			)
 		}
 		for (const roomID of sync.left_rooms ?? []) {
 			if (this.activeRoomID === roomID) {
@@ -587,6 +610,11 @@ export class StateStore {
 		if (updatedRoomList) {
 			this.roomList.emit(updatedRoomList)
 		}
+		if (profileOverridesChanged) {
+			// After the room list is settled: entries built earlier in this same
+			// sync were made before the new overrides were loaded.
+			this.#applyProfileOverrides()
+		}
 		if (prevActiveRoom) {
 			// TODO this will fail if the room is not in the top 100 recent rooms
 			this.switchRoom?.(prevActiveRoom)
@@ -594,6 +622,37 @@ export class StateStore {
 		if (sync.server_timestamp) {
 			this.stateCache?.setServerTimestamp(sync.server_timestamp)
 			this.serverTimestamp = sync.server_timestamp
+		}
+	}
+
+	/*
+	 * Overrides changed: member caches hold overridden names (autocomplete, member
+	 * list), and DM entries in the room list hold an overridden name and avatar.
+	 * Everything else reads overrides at render time via useProfileOverrides.
+	 */
+	#applyProfileOverrides() {
+		for (const room of this.rooms.values()) {
+			room.invalidateProfileOverrides()
+		}
+		let changed = false
+		const updatedRoomList = this.roomList.current.map(entry => {
+			const meta = this.rooms.get(entry.room_id)?.meta.current
+			if (!meta || entry.is_invite) {
+				return entry
+			}
+			const name = getRoomNameWithOverride(meta) ?? "Unnamed room"
+			const avatar = getRoomAvatarWithOverride(meta)
+			if (name === entry.name && avatar === entry.avatar) {
+				return entry
+			}
+			changed = true
+			const updatedEntry = { ...entry, name, search_name: makeRoomSearchName(name, meta.name), avatar }
+			this.roomListEntries.set(entry.room_id, updatedEntry)
+			return updatedEntry
+		})
+		if (changed) {
+			updatedRoomList.sort(this.#sortFunc)
+			this.roomList.emit(updatedRoomList)
 		}
 	}
 
@@ -760,7 +819,7 @@ export class StateStore {
 		}
 		const memberEvt = room.getStateEvent("m.room.member", evt.sender)
 		const icon = `${getAvatarThumbnailURL(evt.sender, memberEvt?.content)}&image_auth=${this.imageAuthToken}`
-		const roomName = room.meta.current.name ?? "Unnamed room"
+		const roomName = getRoomNameWithOverride(room.meta.current) ?? "Unnamed room"
 		const senderName = getDisplayname(evt.sender, memberEvt?.content)
 		const title = senderName === roomName ? senderName : `${senderName} (${roomName})`
 		const notif = new Notification(title, {
@@ -857,6 +916,7 @@ export class StateStore {
 		this.roomList.emit([])
 		this.topLevelSpaces.emit([])
 		this.accountData.clear()
+		clearProfileOverrides()
 		this.currentRoomListQuery = ""
 		this.currentRoomListFilter = null
 		this.#frequentlyUsedEmoji = null

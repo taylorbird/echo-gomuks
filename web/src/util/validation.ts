@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { applyProfileOverride } from "@/api/profileoverrides.ts"
 import {
 	ContentURI,
 	EventID,
@@ -149,7 +150,13 @@ export function getServerName(userID: UserID): string {
 	return userID.slice(idx+1)
 }
 
+// The name to show for a user: their MSC4529 override if the user set one, else
+// the profile's own. Anything sent to a room must use getRealDisplayname instead.
 export function getDisplayname(userID: UserID, profile?: UserProfile | null): string {
+	return getRealDisplayname(userID, applyProfileOverride(userID, profile))
+}
+
+export function getRealDisplayname(userID: UserID, profile?: UserProfile | null): string {
 	return ensureString(profile?.displayname).trim() || getLocalpart(userID) || userID
 }
 

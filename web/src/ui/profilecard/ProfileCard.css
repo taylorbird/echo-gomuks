@@ -1,0 +1,662 @@
+/* The modal box is the card's surface; only its size and padding change here. */
+div.overlay.modal > div.modal-box.profile-card-box {
+	/* Wide enough for the whole action row on one line, "Change nickname" included. */
+	width: min(46rem, 92vw);
+	max-height: min(44rem, 88vh);
+	padding: 0 1.5rem 1.5rem;
+	border-radius: 14px;
+	/* Stronger than --border-color so the card's edge holds against the dimmed room. */
+	border: 1px solid color-mix(in srgb, var(--text-color) 32%, var(--background-color));
+	overflow: auto;
+	/* A short settle into place, so the card doesn't snap in over the room. */
+	animation: profile-card-in .16s cubic-bezier(.2, .8, .3, 1);
+
+	/* Off when the system asks for reduced motion, unless "Ignore reduce motion" is on. */
+	@media (prefers-reduced-motion: reduce) {
+		html:not([data-ignore-reduce-motion]) & {
+			animation: none;
+		}
+	}
+
+	/* Text runs one step above the app's small sizes (the base is 14px), except the
+   user ID line, which stays as subtext. */
+
+/* The card fills the box; left to its content it shrank when rows were folded.
+	   Only the box scrolls. The inner wrapper scrolls too by default, and anything
+	   poking past its edge let WebKit slide the whole card sideways to bring the
+	   close button into view, clipping the left edge and moving the button away
+	   from the cursor. */
+	> div.modal-box-inner {
+		width: 100%;
+		overflow: visible;
+	}
+}
+
+@keyframes profile-card-in {
+	from {
+		opacity: 0;
+		transform: translateY(.375rem) scale(.98);
+	}
+}
+
+/* The dimmed backdrop fades in with it rather than appearing all at once. */
+div.overlay.modal.dimmed:has(> div.profile-card-box) {
+	animation: profile-card-scrim-in .16s ease-out;
+
+	@media (prefers-reduced-motion: reduce) {
+		html:not([data-ignore-reduce-motion]) & {
+			animation: none;
+		}
+	}
+}
+
+@keyframes profile-card-scrim-in {
+	from {
+		background-color: transparent;
+	}
+}
+
+div.profile-card {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	color: var(--text-color);
+
+	svg {
+		width: 1.125rem;
+		height: 1.125rem;
+		flex-shrink: 0;
+		fill: currentColor;
+
+		/* The "modern" icons are outlines; filling them turns them into blobs. */
+		&[stroke] {
+			fill: none;
+		}
+	}
+}
+
+/* A small title and the close button, kept in view while the card scrolls. */
+div.profile-card-header {
+	position: sticky;
+	top: 0;
+	z-index: 3;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 1rem;
+	padding: .75rem 0 .5rem;
+	background: var(--background-color);
+	border-bottom: 1px solid var(--hairline-color);
+
+	> span.profile-card-title {
+		font-size: .875rem;
+		font-weight: 600;
+		color: var(--secondary-text-color);
+	}
+
+	> button.profile-card-close {
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		border-radius: 50%;
+		color: var(--secondary-text-color);
+		display: grid;
+		place-items: center;
+		cursor: pointer;
+
+		&:hover, &:focus-visible {
+			background: var(--light-hover-color);
+			color: var(--text-color);
+		}
+	}
+}
+
+/* Two columns, as in the house pop-ups: who they are, then what you can do. */
+div.profile-card-body {
+	display: grid;
+	grid-template-columns: 8.5rem minmax(0, 1fr);
+	gap: 1.5rem;
+
+	@media screen and (max-width: 34rem) {
+		grid-template-columns: 1fr;
+	}
+}
+
+div.profile-card-identity {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: .75rem;
+	min-width: 0;
+
+	@media screen and (max-width: 34rem) {
+		flex-direction: row;
+	}
+
+	> .profile-card-avatar {
+		position: relative;
+		width: 7.5rem;
+		height: 7.5rem;
+		border-radius: 50%;
+		padding: 0;
+		flex-shrink: 0;
+
+		@media screen and (max-width: 34rem) {
+			width: 4.5rem;
+			height: 4.5rem;
+		}
+
+		> img {
+			width: 100%;
+			height: 100%;
+			border-radius: 50%;
+			object-fit: cover;
+		}
+	}
+
+	> div.profile-card-time {
+		font-size: .875rem;
+		color: var(--secondary-text-color);
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+
+		> b {
+			color: var(--text-color);
+			font-weight: 600;
+		}
+	}
+}
+
+/* The quiet "[override]" under a picture or name that's yours rather than theirs:
+   set like the user ID (monospace, regular weight), in the accent yellow pulled
+   only slightly toward the text colour so it stays legible on white. */
+span.profile-card-override-word {
+	font-family: var(--monospace-font-stack);
+	font-feature-settings: var(--monospace-font-feature-settings);
+	letter-spacing: var(--monospace-letter-spacing);
+	font-size: .8125rem;
+	font-weight: 400;
+	line-height: 1.2;
+	color: color-mix(in srgb, var(--accent-glow-color) 80%, var(--text-color));
+	cursor: default;
+}
+
+div.profile-card-identity > span.profile-card-override-word {
+	margin-top: -.375rem;
+}
+
+div.profile-card-details {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	min-width: 0;
+}
+
+div.profile-card-names {
+	display: flex;
+	flex-direction: column;
+	gap: .125rem;
+
+	/* The name with its "[override]" beside it, on the text baseline. */
+	> div.profile-card-name-line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		column-gap: .5rem;
+		min-width: 0;
+	}
+
+	> div.profile-card-name-line > h2.profile-card-name {
+		margin: 0;
+		font-size: 1.625rem;
+		font-weight: 700;
+		letter-spacing: -.01em;
+		line-height: 1.2;
+		overflow-wrap: anywhere;
+	}
+
+	> div.profile-card-uid {
+		display: flex;
+		align-items: center;
+		gap: .125rem;
+		font-family: var(--monospace-font-stack);
+		font-feature-settings: var(--monospace-font-feature-settings);
+		font-size: .8125rem;
+		color: var(--secondary-text-color);
+
+		> span {
+			overflow-wrap: anywhere;
+			min-width: 0;
+			margin-right: .25rem;
+		}
+
+		> button.profile-card-copy {
+			flex-shrink: 0;
+			width: 1.625rem;
+			height: 1.625rem;
+			padding: 0;
+			border-radius: .375rem;
+			display: grid;
+			place-items: center;
+			/* Tinted so they read as actions, not as part of the ID. */
+			color: var(--link-text-color);
+
+			> svg {
+				width: .9375rem;
+				height: .9375rem;
+			}
+
+			&:hover, &:focus-visible {
+				background: color-mix(in srgb, var(--link-text-color) 14%, transparent);
+			}
+
+			&.copied {
+				color: var(--primary-color-dark);
+			}
+		}
+	}
+
+	> div.profile-card-pronouns {
+		font-size: .875rem;
+		color: var(--secondary-text-color);
+	}
+
+	> div.profile-card-error {
+		font-size: .875rem;
+		color: var(--error-color);
+	}
+}
+
+/* Three lines until opened. */
+div.profile-card-bio {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: .25rem;
+	font-size: .9375rem;
+
+	> div.html-body {
+		display: -webkit-box;
+		-webkit-line-clamp: 3;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+
+	&.open > div.html-body {
+		display: block;
+	}
+}
+
+div.profile-card-footer {
+	display: flex;
+	justify-content: flex-end;
+}
+
+button.profile-card-link {
+	padding: 0;
+	font-size: .875rem;
+	color: var(--secondary-text-color);
+
+	&.danger, &.danger:hover {
+		color: var(--error-color);
+	}
+
+	&:hover, &:focus-visible {
+		background: none;
+		color: var(--text-color);
+		text-decoration: underline;
+	}
+}
+
+p.profile-card-note {
+	margin: 0;
+	font-size: .9375rem;
+	color: var(--semisecondary-text-color);
+}
+
+/* Ringed buttons, one filled primary: the house pair from the pop-ups. */
+div.profile-card button.card-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: .375rem;
+	padding: .45rem .8rem;
+	border-radius: .375rem;
+	font-size: .875rem;
+	font-weight: 600;
+	color: var(--text-color);
+	box-shadow: inset 0 0 0 1px var(--button-hover-color);
+	white-space: nowrap;
+
+	> svg {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	&:hover:not(:disabled), &:focus-visible, &.active {
+		background: var(--light-hover-color);
+	}
+
+	&.primary {
+		background: var(--primary-color);
+		color: var(--inverted-text-color);
+		box-shadow: none;
+
+		&:hover:not(:disabled), &:focus-visible {
+			background: var(--primary-color-dark);
+		}
+	}
+
+	&.danger {
+		color: var(--error-color);
+	}
+
+	&.icon {
+		padding: .45rem .5rem;
+	}
+
+	&:disabled {
+		opacity: .6;
+	}
+}
+
+div.profile-card-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+}
+
+div.profile-card-more {
+	position: relative;
+
+	> div.profile-card-menu {
+		position: absolute;
+		top: calc(100% + .375rem);
+		right: 0;
+		z-index: 2;
+		min-width: 14rem;
+		padding: .375rem;
+		display: flex;
+		flex-direction: column;
+		background: var(--background-color);
+		border: 1px solid var(--hairline-color);
+		border-radius: 10px;
+		box-shadow: 0 12px 32px var(--modal-box-shadow-color), 0 2px 8px var(--modal-box-shadow-color);
+
+		> button {
+			text-align: left;
+			justify-content: flex-start;
+			padding: .45rem .6rem;
+			border-radius: .375rem;
+			font-size: .875rem;
+			white-space: nowrap;
+
+			&:hover, &:focus-visible {
+				background: var(--light-hover-color);
+			}
+
+			&.danger {
+				color: var(--error-color);
+			}
+		}
+
+		> hr {
+			border: none;
+			border-top: 1px solid var(--hairline-color);
+			margin: .25rem;
+			width: auto;
+		}
+	}
+}
+
+/* The folded rows: label, summary, chevron. */
+div.profile-card-rows {
+	display: flex;
+	flex-direction: column;
+	border-top: 1px solid var(--hairline-color);
+}
+
+div.card-row {
+	display: grid;
+	grid-template-columns: 7rem minmax(0, 1fr) auto;
+	align-items: center;
+	gap: .75rem;
+	min-height: 2.75rem;
+	padding: .4rem .25rem;
+	border-bottom: 1px solid var(--hairline-color);
+
+	&.expandable {
+		cursor: pointer;
+
+		&:hover {
+			background: var(--light-hover-color);
+		}
+	}
+
+	&:not(.expandable) {
+		grid-template-columns: 7rem minmax(0, 1fr);
+	}
+
+	@media screen and (max-width: 34rem) {
+		grid-template-columns: 5.5rem minmax(0, 1fr) auto;
+	}
+
+	> span.card-row-label {
+		font-size: .875rem;
+		color: var(--secondary-text-color);
+	}
+
+	> span.card-row-summary {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: .375rem;
+		min-width: 0;
+		font-size: .9375rem;
+	}
+
+	> button.card-row-toggle {
+		width: 1.75rem;
+		height: 1.75rem;
+		padding: 0;
+		border-radius: 50%;
+		color: var(--secondary-text-color);
+		display: grid;
+		place-items: center;
+
+		> svg {
+			transition: rotate .15s;
+		}
+	}
+
+	&.open > button.card-row-toggle > svg {
+		rotate: 90deg;
+	}
+}
+
+div.card-row-detail {
+	display: flex;
+	flex-direction: column;
+	gap: .625rem;
+	padding: .25rem .25rem .875rem 7.75rem;
+	border-bottom: 1px solid var(--hairline-color);
+
+	@media screen and (max-width: 34rem) {
+		padding-left: .25rem;
+	}
+}
+
+span.card-dim {
+	color: var(--secondary-text-color);
+}
+
+/* Room chips in Shared rooms. */
+div.profile-card button.card-chip, div.profile-card span.card-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: .375rem;
+	max-width: 12rem;
+	padding: .15rem .55rem .15rem .2rem;
+	border-radius: 999px;
+	background: var(--light-hover-color);
+	font-size: .875rem;
+	font-weight: 500;
+
+	> img.avatar {
+		width: 1.25rem;
+		height: 1.25rem;
+		border-radius: 50%;
+	}
+
+	> span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	&.more {
+		padding: .15rem .55rem;
+		color: var(--semisecondary-text-color);
+	}
+}
+
+div.profile-card button.card-chip:hover, div.profile-card button.card-chip:focus-visible {
+	background: var(--button-hover-color);
+}
+
+div.card-chip-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .375rem;
+}
+
+/* Security */
+span.card-trust {
+	display: inline-flex;
+	align-items: center;
+	gap: .3rem;
+	font-weight: 500;
+
+	> svg {
+		width: 1rem;
+		height: 1rem;
+	}
+
+	&.verified > svg, &.tofu > svg {
+		color: var(--primary-color-dark);
+	}
+
+	&.changed {
+		color: var(--error-color);
+	}
+}
+
+p.card-detail-text {
+	margin: 0;
+	font-size: .875rem;
+	color: var(--semisecondary-text-color);
+
+	&.warning {
+		color: var(--error-color);
+	}
+}
+
+div.card-master-key {
+	display: flex;
+	flex-direction: column;
+	gap: .125rem;
+	font-size: .75rem;
+	color: var(--secondary-text-color);
+
+	> code {
+		font-family: var(--monospace-font-stack);
+		font-feature-settings: var(--monospace-font-feature-settings);
+		color: var(--semisecondary-text-color);
+		overflow-wrap: anywhere;
+		background: none;
+		padding: 0;
+	}
+}
+
+div.card-row-detail > button.profile-card-link {
+	align-self: flex-start;
+}
+
+ul.card-devices {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: .375rem;
+
+	> li.card-device {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		gap: .5rem;
+		font-size: .875rem;
+
+		> span.card-device-icon {
+			display: grid;
+			color: var(--primary-color-dark);
+		}
+
+		&.trust-unverified, &.trust-cross-signed-untrusted {
+			> span.card-device-icon {
+				color: var(--secondary-text-color);
+			}
+		}
+
+		&.trust-blacklisted, &.trust-device-key-mismatch {
+			> span.card-device-icon {
+				color: var(--error-color);
+			}
+		}
+
+		> span.card-device-name {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		> code.card-device-id {
+			font-family: var(--monospace-font-stack);
+			font-size: .75rem;
+			color: var(--secondary-text-color);
+			background: none;
+			padding: 0;
+		}
+	}
+}
+
+div.card-detail-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+}
+
+/* In this room */
+div.card-power {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .5rem;
+	font-size: .875rem;
+
+	> label {
+		color: var(--secondary-text-color);
+	}
+
+	> select, > input {
+		font: inherit;
+		padding: .35rem .5rem;
+		border: 1px solid var(--border-color);
+		border-radius: .375rem;
+		background: var(--background-color);
+		color: var(--text-color);
+	}
+
+	> input {
+		width: 6rem;
+	}
+}

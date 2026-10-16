@@ -14,38 +14,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { use, useEffect, useRef, useState } from "react"
-import { BACKEND_CREDENTIALS, BACKEND_URL } from "@/api/backend.ts"
 import type Client from "@/api/client.ts"
 import { getAvatarThumbnailURL } from "@/api/media.ts"
-import type { ContentURI, MediaMessageEventContent } from "@/api/types"
+import type { ContentURI } from "@/api/types"
 import { SkeletonEdge } from "../loading"
 import { ModalCloseContext } from "./contexts.ts"
+import { PICTURE_ACCEPT, preparePicture, uploadAvatar } from "./uploadavatar.ts"
 import "./ConfirmModal.css"
 import "./ProfileEditor.css"
-
-// Uploads unencrypted, as a profile picture has to be readable by everyone.
-async function uploadAvatar(client: Client, file: File): Promise<ContentURI> {
-	let media: MediaMessageEventContent
-	if (client.rpc.rpcMediaUpload) {
-		media = await client.rpc.uploadMedia(file, file.name, false)
-	} else {
-		const params = new URLSearchParams([["encrypt", "false"], ["progress", "false"], ["filename", file.name]])
-		const resp = await fetch(`${BACKEND_URL}_gomuks/upload?${params.toString()}`, {
-			method: "POST",
-			body: file,
-			headers: { "Content-Type": file.type },
-			credentials: BACKEND_CREDENTIALS,
-		})
-		media = await resp.json()
-		if (!resp.ok) {
-			throw new Error((media as { error?: string }).error ?? resp.statusText)
-		}
-	}
-	if (!media.url) {
-		throw new Error("the upload returned no address")
-	}
-	return media.url
-}
 
 interface ProfileEditorProps {
 	client: Client
@@ -90,10 +66,17 @@ const ProfileEditor = ({ client }: ProfileEditorProps) => {
 		}
 	}, [newAvatar])
 
-	const onPickAvatar = (evt: React.ChangeEvent<HTMLInputElement>) => {
+	const onPickAvatar = async (evt: React.ChangeEvent<HTMLInputElement>) => {
 		const file = evt.target.files?.[0]
-		if (file) {
-			setNewAvatar({ file, preview: URL.createObjectURL(file) })
+		if (!file) {
+			return
+		}
+		setError(null)
+		try {
+			// The previous preview is revoked by the effect above when this replaces it.
+			setNewAvatar({ file, preview: await preparePicture(file) })
+		} catch (err) {
+			setError(err instanceof Error ? err.message : `${err}`)
 		}
 	}
 	const changed = name.trim() !== origName || bio !== origBio || newAvatar !== null
@@ -144,7 +127,7 @@ const ProfileEditor = ({ client }: ProfileEditorProps) => {
 					<img src={avatarSrc} alt=""/>
 					<span className="profile-avatar-hint">Change</span>
 				</button>
-				<input ref={fileInput} type="file" accept="image/*" onChange={onPickAvatar} value=""/>
+				<input ref={fileInput} type="file" accept={PICTURE_ACCEPT} onChange={onPickAvatar} value=""/>
 				<div className="profile-user-id">{client.userID}</div>
 			</div>
 			<div className="profile-fields">

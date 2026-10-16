@@ -39,7 +39,14 @@ import {
 import { formatDate, formatFullTime, formatShortTime, newSafeDate } from "@/util/datetime.ts"
 import { displayAsRedacted } from "@/util/displayAsRedacted.ts"
 import { isMobileDevice } from "@/util/ismobile.ts"
-import { getDisplayname, getRelatesTo, getThreadRoot, isEventID, isThread } from "@/util/validation.ts"
+import {
+	getDisplayname,
+	getRealDisplayname,
+	getRelatesTo,
+	getThreadRoot,
+	isEventID,
+	isThread,
+} from "@/util/validation.ts"
 import ClientContext from "../ClientContext.ts"
 import MainScreenContext from "../MainScreenContext.ts"
 import { EventFullMenu, EventHoverMenu, MenuPositioner } from "../menu"
@@ -745,7 +752,11 @@ const TimelineEvent = ({
 
 	const fullTime = formatFullTime(eventTS)
 	const shortTime = formatShortTime(eventTS)
-	const renderMemberEventDisplayname = getDisplayname(evt.sender, renderMemberEvtContent)
+	// A per-message profile is someone other than the relaying account, so that
+	// account's MSC4529 nickname must not stand in for it.
+	const renderMemberEventDisplayname = perMessageSender
+		? getRealDisplayname(evt.sender, renderMemberEvtContent)
+		: getDisplayname(evt.sender, renderMemberEvtContent)
 	const mainMemberEventDisplayname = getDisplayname(evt.sender, memberEvtContent)
 	const mainEvent = <div
 		data-event-id={evt.event_id}

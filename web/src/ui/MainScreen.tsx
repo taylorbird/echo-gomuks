@@ -16,6 +16,7 @@
 import equal from "fast-deep-equal"
 import { RefObject, use, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from "react"
 import Client from "@/api/client.ts"
+import { getRoomNameWithOverride } from "@/api/profileoverrides.ts"
 import {
 	RoomListFilter,
 	RoomStateStore,
@@ -37,6 +38,7 @@ import StylePreferences from "./StylePreferences.tsx"
 import SyncBox from "./SyncBox.tsx"
 import Keybindings from "./keybindings.ts"
 import { ModalContext, ModalWrapper, NestableModalContext, modals } from "./modal"
+import { openProfileCard } from "./profilecard/open.tsx"
 import RightPanel, { RightPanelProps } from "./rightpanel/RightPanel.tsx"
 import RoomList from "./roomlist/RoomList.tsx"
 import RoomPreview, { RoomPreviewProps } from "./roomview/RoomPreview.tsx"
@@ -67,7 +69,14 @@ class ContextFields implements MainScreenContextFields {
 	}
 
 	setRightPanel = (props: RightPanelProps | null, pushState = true) => {
-		if ((props?.type !== "user") && !this.client.store.activeRoomID) {
+		// People open as a profile card over the room rather than as a side column.
+		// Every way of opening one (timeline, member list, matrix.to links, the
+		// /open command, history) comes through here, so this is the one switch.
+		if (props?.type === "user") {
+			openProfileCard(props.userID)
+			return
+		}
+		if (!this.client.store.activeRoomID) {
 			props = null
 		}
 		const isEqual = equal(this.currentRightPanel, props)
@@ -219,7 +228,7 @@ class ContextFields implements MainScreenContextFields {
 		if (pushState) {
 			history.pushState({ room_id: room.roomID, space_id: space?.id ?? history.state?.space_id }, "")
 		}
-		let roomNameForTitle = room.meta.current.name
+		let roomNameForTitle = getRoomNameWithOverride(room.meta.current)
 		if (roomNameForTitle && roomNameForTitle.length > 48) {
 			roomNameForTitle = roomNameForTitle.slice(0, 45) + "…"
 		}

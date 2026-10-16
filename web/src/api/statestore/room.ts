@@ -13,13 +13,14 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+import { applyProfileOverride, getProfileOverride } from "@/api/profileoverrides.ts"
 import { Preferences, getLocalStoragePreferences, getPreferenceProxy } from "@/api/types/preferences"
 import { CustomEmojiPack, parseCustomEmojiPack } from "@/util/emoji"
 import { EventDispatcher, NonNullCachedEventDispatcher } from "@/util/eventdispatcher.ts"
 import { getUserLevel } from "@/util/powerlevel.ts"
 import toSearchableString from "@/util/searchablestring.ts"
 import Subscribable, { MultiSubscribable, NoDataSubscribable } from "@/util/subscribable.ts"
-import { getDisplayname, getRelatesTo, getServerName, getThreadRoot } from "@/util/validation.ts"
+import { getDisplayname, getRealDisplayname, getRelatesTo, getServerName, getThreadRoot } from "@/util/validation.ts"
 import {
 	ContentURI,
 	DBReceipt,
@@ -113,7 +114,11 @@ function memToRawEvent(evt: MemDBEvent): RawDBEvent {
 
 export interface AutocompleteMemberEntry {
 	userID: UserID
+	// As shown: the MSC4529 override if there is one.
 	displayName: string
+	// As sent: mentions inserted from autocomplete use this, so a private
+	// nickname never reaches the room.
+	realDisplayName: string
 	avatarURL?: ContentURI
 	searchString: string
 	event: MemDBEvent
@@ -338,14 +343,21 @@ export class RoomStateStore {
 				|| evt.content.membership === "invite"
 				|| evt.content.membership === "knock"
 			))
-			.map((evt): AutocompleteMemberEntry => ({
-				userID: evt.state_key!,
-				displayName: getDisplayname(evt.state_key!, evt.content as MemberEventContent),
-				avatarURL: evt.content?.avatar_url,
-				searchString: toSearchableString(`${evt.content?.displayname ?? ""}${evt.state_key!.slice(1)} ${
-					evt.content.membership !== "join" ? evt.content.membership : ""}`),
-				event: evt,
-			}))
+			.map((evt): AutocompleteMemberEntry => {
+				const content = evt.content as MemberEventContent
+				const override = getProfileOverride(evt.state_key as UserID)
+				const overrideName = typeof override?.displayname === "string" ? override.displayname : ""
+				return {
+					userID: evt.state_key!,
+					displayName: getDisplayname(evt.state_key!, content),
+					realDisplayName: getRealDisplayname(evt.state_key!, content),
+					avatarURL: applyProfileOverride(evt.state_key!, content)?.avatar_url,
+					// Both names match, so typing the real name still finds a nicknamed member.
+					searchString: toSearchableString(`${overrideName}${content?.displayname ?? ""}${
+						evt.state_key!.slice(1)} ${content.membership !== "join" ? content.membership : ""}`),
+					event: evt,
+				}
+			})
 			.toArray()
 		membersCache.sort((a, b) => {
 			const aKnocked = a.event.content.membership === "knock"
@@ -569,6 +581,11 @@ export class RoomStateStore {
 		}
 		this.applyEvent(evt, true)
 		this.notifyTimelineSubscribers()
+	}
+
+	invalidateProfileOverrides() {
+		this.#membersCache = null
+		this.stateSubs.notify("m.room.member")
 	}
 
 	invalidateStateCaches(evtType: string, key: string) {
