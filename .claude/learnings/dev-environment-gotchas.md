@@ -409,3 +409,24 @@ go vet -tags goolm,sqlite_fts5 ./...
 **Gotcha:** The web/package-lock.json entries for @tauri-apps/plugin-updater (2.10.1), @tauri-apps/plugin-opener (2.5.4), @tauri-apps/cli (2.11.4), and react-colorful (5.6.1) must match the Cargo.lock versions exactly. Mismatches cause version errors at runtime. This becomes visible after an upstream sync when Cargo.lock is regenerated as part of merge conflict resolution.
 
 **Pattern:** If Cargo.lock changes during a merge, re-lock the npm packages to match BEFORE committing. Verify all four versions align between the two lock files.
+
+## Backend cache dir is created only at startup: broken images after a cache cleanup (2026-10-05, 2026-10-06)
+
+**Symptom:** after deleting ~/Library/Caches/dev.tbird.echo-dev during a disk cleanup, every image and avatar in the running app was broken. It happened twice.
+
+**Cause:** the gomuks backend creates its cache dir only at startup (pkg/gomuks/gomuks.go:177, MkdirAll). Deleting it while the app runs leaves media writes with no directory.
+
+**Fix:** restart the app. A self-healing fix (recreate the cache dir on demand in pkg/gomuks/mediadownload.go) was offered and not yet decided.
+
+**Also after any such cleanup:** run `go clean -cache` before releasing (see release-pipeline.md).
+
+## Reading webview events without Web Inspector (2026-10-08)
+
+**Pattern:** in `tauri dev`, frontend debug data can be piped into the tauri dev terminal (stdout) through Vite's HMR websocket, with no Web Inspector attached.
+- Client side: `import.meta.hot?.send("echo:debug", data)`.
+- Server side: a Vite plugin with `configureServer(server) { server.ws.on("echo:debug", d => console.log(...)) }`.
+- Load the client script with a dev-only dynamic import (`if (import.meta.env.DEV) void import(...)`), so nothing ships.
+
+**Identifying programmatic scrollers:** patch `Element.prototype` `scrollTop` (via `Object.defineProperty`) and wrap `scrollIntoView`, `scrollTo`, `focus`; log `new Error().stack` on each call. Also log capture-phase scroll events and elements appended directly under `body`.
+
+**Reference copies:** `.claude/work/mockups/debug-scroll.ts` and `.claude/work/mockups/vite-debug-sink.ts`. Remove the hooks before committing; they are dev-only and must not reach a release.

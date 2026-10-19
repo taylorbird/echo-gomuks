@@ -1,0 +1,139 @@
+<title>All Chats Icon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap">
+<style>
+	:root {
+		color-scheme: dark;
+		--page: #1b1c22;
+		--card: #23242b;
+		--card-edge: #33343c;
+		--band: #46444a;
+		--band-selected: rgba(255, 228, 132, .16);
+		--hover: rgba(255, 255, 255, .06);
+		--ink: #eeeae6;
+		--ink-2: #b0acaa;
+		--ink-3: #85817f;
+		--glow: #ffe484;
+		--glow-near: rgba(255, 228, 132, .75);
+		--glow-far: rgba(255, 228, 132, .35);
+		--current: #85d6ff;
+	}
+	body {
+		background: var(--page);
+		color: var(--ink);
+		font: 15px/1.5 Inter, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+		padding: 2rem 16px 3rem;
+	}
+	main { max-width: 68rem; margin: 0 auto; }
+	h1 { font-size: 1.375rem; font-weight: 700; margin: 0 0 .25rem; text-wrap: balance; }
+	.lede { color: var(--ink-2); margin: 0 0 1.75rem; max-width: 62ch; }
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+		gap: 1rem;
+	}
+	.card {
+		background: var(--card);
+		border: 1px solid var(--card-edge);
+		border-radius: .75rem;
+		padding: 1rem;
+		display: grid;
+		grid-template-columns: 5.25rem 1fr;
+		gap: 1rem;
+		align-items: start;
+	}
+	.card.is-current { border-color: color-mix(in oklab, var(--current) 45%, var(--card-edge)); }
+	.band {
+		background: var(--band);
+		border-radius: .5rem;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		padding-block: .25rem;
+	}
+	.sub {
+		position: relative;
+		height: 3.125rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		color: var(--ink-2);
+	}
+	.sub svg { width: 1.4375rem; height: 1.4375rem; display: block; }
+	.sub.on { color: var(--ink); background: var(--band-selected); }
+	.sub.on::before {
+		content: "";
+		position: absolute;
+		left: calc((5.25rem - 3.125rem) / 2 - .75rem);
+		top: 50%;
+		translate: 0 -50%;
+		width: .1875rem;
+		height: 1.5625rem;
+		border-radius: 999px;
+		background: var(--glow);
+		box-shadow: 0 0 6px var(--glow-near), 0 0 14px var(--glow-far);
+	}
+	.meta { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+	.tag {
+		font-size: .75rem;
+		font-weight: 700;
+		letter-spacing: .06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+	}
+	.is-current .tag { color: var(--current); }
+	.name { font-size: 1rem; font-weight: 700; margin: 0; }
+	.big { color: var(--ink); }
+	.big svg { width: 3rem; height: 3rem; display: block; }
+	.note { color: var(--ink-2); font-size: .875rem; margin: 0; }
+	code { font: .8125rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink-3); }
+</style>
+
+<main>
+	<h1>All chats icon</h1>
+	<p class="lede">Each card shows the sub-filter band from the space rail at real size, with All chats selected: All chats, Rooms, Direct messages, Recent. The large icon on the right shows the shape on its own. All are Lucide icons, the same set as the other three.</p>
+	<div class="grid" id="grid"></div>
+</main>
+
+<script>
+	const S = inner => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`
+	const others = [
+		S('<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>'),
+		S('<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'),
+		S('<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>'),
+	]
+	const options = [
+		{ id: "A", current: true, name: "Four squares", lucide: "layout-grid",
+			note: "Today's icon. Reads as \"apps\" or \"grid view\" more than chats.",
+			svg: S('<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>') },
+		{ id: "B", name: "Two bubbles", lucide: "messages-square",
+			note: "Several conversations. Already in the repo's icon folder.",
+			svg: S('<path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/>') },
+		{ id: "C", name: "Bubble with lines", lucide: "message-square-text",
+			note: "One chat bubble with text in it. A single weight, like # and the person.",
+			svg: S('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/>') },
+		{ id: "D", name: "Inbox", lucide: "inbox",
+			note: "Everything that comes in, in one place. Mail's metaphor.",
+			svg: S('<polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>') },
+		{ id: "E", name: "Layers", lucide: "layers",
+			note: "Rooms and DMs stacked together. More abstract than the rest.",
+			svg: S('<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>') },
+		{ id: "F", name: "List", lucide: "list",
+			note: "A plain list of everything. Close to what the view actually shows.",
+			svg: S('<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>') },
+	]
+	document.getElementById("grid").innerHTML = options.map(o => `
+		<article class="card ${o.current ? "is-current" : ""}">
+			<div class="band" aria-label="Sub-filter band, option ${o.id}">
+				<div class="sub on">${o.svg}</div>
+				${others.map(svg => `<div class="sub">${svg}</div>`).join("")}
+			</div>
+			<div class="meta">
+				<span class="tag">${o.id}${o.current ? " · current" : ""}</span>
+				<h2 class="name">${o.name}</h2>
+				<div class="big">${o.svg}</div>
+				<p class="note">${o.note}</p>
+				<code>${o.lucide}</code>
+			</div>
+		</article>`).join("")
+</script>

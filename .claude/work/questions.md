@@ -2,6 +2,28 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
+## New this session (2026-10-08)
+
+- **Reaction tooltip blinks away and room list creeps 1px (release 0.7.3, parked by user "ignore for now")** — hovering a reaction pill makes the "who reacted" tooltip blink and disappear; the user thinks it is specific to custom emoji. Each occurrence scrolls the room list down about 1px, so repeated hovering slowly scrolls it. Verified: EventReactions (web/src/ui/timeline/TimelineEvent.tsx ~111-120) portals the tooltip to body and hides it on any capture-phase window scroll; in dev, 10 hovers logged zero scroll events, focus changes or programmatic scroll calls; the release CSS rule for body>div.reaction-tooltip matches dev. Inferred: the 1px scroll fires that listener; the cause of the scroll is unknown. Unanswered: (1) was the same room and reaction hovered in dev as in the release app? (2) does the release app still do it right after a fresh launch? Next step if it persists: instrument a local release build to catch the scroll there. Instrumentation reference copies are parked in .claude/work/mockups/debug-scroll.ts and .claude/work/mockups/vite-debug-sink.ts (not in the source tree).
+
+## New this session (2026-10-07)
+
+- **Self-healing backend cache dir** — offered: make the backend recreate its cache dir on demand (pkg/gomuks/mediadownload.go). Today it is created only at startup (gomuks.go:177), so a cache cleanup breaks every image until the app restarts (happened 2026-10-05 and 2026-10-06). User has not answered.
+- **Read-receipt fix not hand-reproduced** — the 0.7.3 change is inferred from code (see Resolved). Confirm in practice: a room should clear after scrolling to the bottom.
+- **YouTube playback inside WKWebView unconfirmed** — shipped in 0.7.2 and 0.7.3; the user has not confirmed playback in the installed app.
+- **Rail DMs show all unread DMs regardless of space** — per-space filtering (by the member rule used for space DMs) was offered as an alternative; not chosen.
+- **Linux AppImage never launched** — next step is the user installing target/linux/arm64/echo_0.7.2_aarch64.AppImage in the Parallels Arch VM (GNOME or COSMIC). Open items: title bar handling for tiling WMs (Hyprland, COSMIC); rename the `app` executable (the .deb installs /usr/bin/app); strip the ~89MB sidecar; wire Linux into release.sh and latest.json (keys linux-x86_64, linux-aarch64). No Linux updater entry exists yet, so the update check fails quietly (updater.ts catch).
+- **x86_64 Linux build untested** — ARCH=amd64 uses machine echo-builder-amd64. The user plans to test x86_64 on tester "wreck"'s machine.
+- **Linux display-server behaviour unverified** — general knowledge only, not tested here: GTK3 draws its own title bar on Wayland; NVIDIA + Wayland blank window workaround is WEBKIT_DISABLE_DMABUF_RENDERER=1; YouTube playback needs gst-plugins-good and gst-libav (declared in the .deb depends).
+
+## New this session (2026-09-25)
+
+- **Profile editor, space DMs, download prompt, multi-attachments untested in 0.7.1 production build** — all features shipped in 0.7.1 but have not been verified by user in the installed app. Tester (wreck) to try and give feedback.
+- **Should the composer keyboard formatting shortcuts come back?** — Cmd+B (bold), Cmd+I (italic), Shift+Cmd+X (strike), Cmd+E (code), Shift+Cmd+K (link) were built in the format bar, then removed at user request. Open question: should they be re-added in a future release?
+- **Per-space "Show people in spaces" toggle** — Element has this setting; echo does not implement it. Add if users request it. Space DMs are now shown by member rule (0.7.1); the toggle would be a refinement.
+- **HEAD request for lightbox-opened images without size info** — when an image is opened in the lightbox with no cached dimensions, a HEAD request is sent to the backend to fetch media metadata. This may cause the backend to fetch the full media file (unverified). Potential optimization: cache size info locally or avoid the HEAD request.
+- **Vite HMR silent miss in Tauri webview** — reported once ("I don't see it" on dev app changes). Vite hot-module-reload can silently miss updates in the webview; workaround: `touch web/index.html` forces a full reload. Root cause unknown; low impact for now.
+
 ## New this session (2026-09-24)
 
 - **Styling pass planned for the next release** (user, 2026-09-24: "come back to it probably the next release, don't forget"). Upstream 0.7.0 sync now complete; next release will include styling/polish for screens still in upstream's plain look. Priority list: (1) the reaction hover tooltip (web/src/ui/timeline/TimelineEvent.css `div.reaction-tooltip`), (2) the encryption verification screen (web/src/ui/login/VerificationScreen.tsx; still titled "gomuks web"), (3) the full reactions list modal (web/src/ui/modal/EventReactions.tsx), (4) the message search panel's options area (checkboxes, date inputs; web/src/ui/rightpanel/MessageSearch.tsx), (5) the devtools push rule editor, (6) the "(N more)" button in user info mutual rooms. Also: `window.alert` is still used for errors across the menus (RoomMenu, usePrimaryItems, useSecondaryItems); only "Request key" moved to the echo-styled ResultModal (0.7.0). Menu alerts remain for the next styling pass.
@@ -107,14 +129,14 @@
 ## Blockers / Limitations
 - Claude cannot see the app visually in this environment: `screencapture` fails ("could not create image from display" — terminal lacks macOS Screen Recording permission), the chrome-devtools MCP cannot attach (no Chrome running with a debug port), and `osascript`/System Events reports 0 windows for the transparent Tauri window (an Accessibility quirk, not a render failure). Granting the terminal Screen Recording permission would unblock visual self-review. Release-only bugs are particularly hard to diagnose because production builds have NO LOGGING (tauri_plugin_log only initialises under cfg!(debug_assertions)) and no devtools. Three bugs today (restart button, external links, fetch_og_tags) were diagnosed only by user testing, and the root cause (tauri ACL remote-origin denial) was invisible without source-code archaeology. **Recommendation:** enable logging in release builds and consider devtools for faster diagnosis in the future.
 
-### Read receipts not sending (known issue, listed in release notes since 0.4.1)
-Room stays unread after reading; clearing from another client works (user confirmed via Element). Gate: TimelineView.tsx ~75-97 requires `scrolledToBottom && focused && newest event`. Prime suspect: util/focus.ts seeds `focused` from `document.hasFocus()` at module load, only updates on window focus/blur events — WKWebView may never fire those on native window activation, leaving `focused: false` forever even when the window is active. **Diagnostic plan:** re-add [read-gate] console.debug logging the gate fields to stderr/log; expect `focused: false` + `documentHasFocus: true` when the window is visibly active. Needs real WKWebView (dev app + native devtools) or Playwright harness pattern applied to real WKWebView.
+- Read receipts not sending: moved to Resolved (2026-10-07).
 
 ### DB cleanup offer: 37 stale membership unread_type rows
 Root cause fixed in 0.4.2 (membership events no longer drive unread counts), but the 37 existing membership events that were flagged with unread_type=2 remain in the database. User can manually zero them when desired (requires app quit, one-off cleanup query, restart). Cleanup offer documented but not yet offered — awaits explicit user go-ahead.
 
 ## Resolved
 
+- **Read receipts not sending (known issue since 0.4.1)** — RESOLVED in 0.7.3 (2026-10-07). Fix inferred, not hand-reproduced. Root cause (inferred from code): `scrolledToBottom` was a plain field, so scrolling down to read never re-ran the receipt effect. Fix: TimelineView.tsx `bottomArrivals` state is bumped when the scroll handler sees not-at-bottom -> at-bottom, and is in the receipt effect deps. The old focus-event theory is weakened (backend log showed mark_read working 2026-10-06). The known-issue entry was removed from the release notes. Confirm in practice (see New this session 2026-10-07).
 - **Where does the sync box go when a room is selected?** — RESOLVED (2026-09-21): for the connection-loss case, answered by DisconnectedScreen (box over opaque skeleton, window-centred, with penguin lockup). SyncBox (first sync) itself remains bare and pane-scoped — deliberately different per its comment, since the skeleton behind is live during first sync and worth watching.
 - **Rail profile avatar bug** — RESOLVED (2026-09-20): `getAvatarThumbnailURL(client.userID)` was called with no profile content, so `avatar_url` was never available and it could only ever draw a generated letter tile. Fixed by fetching profile once via `client.rpc.getProfile(client.userID)` and passing as the second argument.
 - **Stale `room_list_color` preference description** — RESOLVED (2026-09-20): preferences.ts ~136 referenced the deleted `uniform_room_list_color` preference. Updated to: "The sidebar accent: the color of the room kind glyphs in the room list."
@@ -141,6 +163,12 @@ Root cause fixed in 0.4.2 (membership events no longer drive unread counts), but
 - Does the room-list-wrapper's outer raise shadow escape `contain: strict`? — RESOLVED (indirectly): removed `content-visibility: auto` / `contain: strict` entirely from room-list entries due to WebKit paint-deferral issues. Question moot.
 - Should the pre-existing 11 eslint errors in untouched files (`WebAuthLogin.tsx`, `MessageComposer.tsx`, `useSecondaryItems.tsx`, `TimelineEvent.tsx`) be cleaned up? — RESOLVED: all pre-existing errors remain; the project is now at zero tsc/eslint on all touched code (a new baseline 2026-08-21). Pre-existing errors in untouched files are not attributable to this work and can be addressed separately.
 - Startup auth retry on ECONNREFUSED (shell rebuild race)? — RESOLVED (2026-08-25 as side effect): TCP readiness wait in lib.rs (500ms connect timeout, 100ms interval, 15s deadline) prevents the old race where the webview's first auth request beat the sidecar to port 29325. Deterministic start order now guaranteed.
+
+- **DM sub-filter permanently empty inside real spaces (options A–D)** — RESOLVED (2026-09-25): Implemented option B, matching Element's rule. Spaces now include DMs if the `dm_user_id` is a member of the space (joined or invited) or any descendant subspace (member-transitive). `SpaceEdgeStore` gained `#members`, `#flattenedMembers`, `setMembers()`, `includeByEdges()`. Space badges recount on member change. "Outside spaces" orphans use `includeByEdges` so DMs stay visible there. Shipped in 0.7.1. Child rooms still come from `m.space.child` edges; DMs are added by the member rule on top.
+
+- **Tester's global profile / greyed avatar complaint** — RESOLVED (2026-09-25): The avatar was greyed out because the rail button was `disabled={!activeRoomID}`: it opened the user side panel, which only exists with a room open (the older missing-`content` avatar bug is a separate item, fixed 2026-09-20). The tester's request for a profile editor was addressed by adding ProfileEditor.tsx in 0.7.1 (modal form for display name, picture, bio; sidebar avatar button entry point that opens it without needing a room).
+
+- **Reaction hover tooltip styling and clipping** — RESOLVED (2026-09-25): Reaction tooltip was being clipped by `div.event-content` (overflow:hidden + contain). Fixed by portalling the tooltip to document.body with position:fixed, and restyling it as part of the pop-up visual pattern update (no longer needs containment workaround).
 
 ## Cotypist (text prediction) does not work in echo — revisit
 

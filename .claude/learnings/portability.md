@@ -19,6 +19,21 @@ Assessment findings from evaluating iOS/Android and Linux/Windows ports of echo.
 - **Unfit for iOS:** (1) iOS suspends background tasks, so sync cannot run when the app is backgrounded. (2) Notifications need decrypted content in the notification body; a WASM backend running in the main JS thread (or any Worker) cannot run inside a notification extension, so push notifications stay encrypted and useless. (3) On-phone performance is unmeasured. (4) Native feel is capped at web-app (no system notifications, no badge counts, no VoIP integration).
 - **Viable as a test:** Building wasmuks + hosting statically + testing in mobile Safari (no iOS suspension in browser) is a zero-code way to verify frontend behavior on a phone before committing to a native build.
 
+## The FFI path: gomuks embedded in a mobile app (2026-10-19)
+
+**Correction to the 2026-09-01 assessment.** It rejected the WASM backend and a hosted backend for iOS and picked an Element X fork, but it never evaluated `pkg/ffi`, upstream's C library interface for linking the Go backend into an app process. The FFI has been in the tree since 2026-01-24 (#680). This is the gomuks analogue of what Sable-next does with its Rust core in Tauri mobile.
+
+- **API** (`pkg/ffi/gomuksffi.h`): `GomuksInit(root)`, `GomuksStart(handle, eventCallback)`, `GomuksSubmitCommand(Async)` using the same jsoncmd command names as the websocket RPC, media upload/download with progress, `GomuksDestroy`.
+- **Push:** `GomuksHandlePush` (added 2026-08-19, upstream #747, `pkg/gomuks/matrixpush.go`, `pkg/hicli/synccrypto.go`) takes a homeserver push payload and returns the event. The header says it "can be called without GomuksStart", which is what an iOS Notification Service Extension needs. This reached echo after the 2026-09-01 assessment.
+- **Build:** `pkg/ffi/build.sh` builds a c-shared `libgomuksffi` with `-tags sqlite_fts5`. iOS doesn't allow loading shared libraries this way, so an iOS build needs a static c-archive (inferred, not tried).
+- **Inferred shape of a mobile echo:** Tauri 2 mobile app whose Rust side links libgomuksffi; a new transport in `web/src/api` carrying commands/events over Tauri invoke/events instead of the websocket (the React frontend carries over); an iOS NSE calling `GomuksHandlePush`; a push gateway (Sygnal) with echo's own APNs key.
+- **Unknown:** Go runtime + SQLite inside the NSE memory limit (biggest risk); Tauri iOS maturity for a full app; whether upstream ships a mobile app on this FFI.
+- **Next step agreed 2026-10-19:** a spike on a branch: build the FFI for the iOS simulator, link it into a bare Tauri iOS app, show the room list through it.
+
+## Sable-next as an alternative base (researched 2026-10-19)
+
+Sable v2 (git.sable.moe/SableClient/Sable-next), from the research agent's reading of the repo: from-scratch rewrite started 2026-08-10, v2.0.0 on 2026-10-10. Svelte 5 UI over a Rust core on a forked matrix-rust-sdk; the core runs natively (SQLite) in Tauri on desktop, iOS and Android, or as WASM in the browser. Requires sliding sync (synapse.mssj.me advertises `org.matrix.simplified_msc3575`, verified). AGPL-3.0-or-later. One author wrote ~6,300 of the commits. CONTRIBUTING.md declines AI-assisted contributions, so echo's work could never go upstream; forks are welcome. Echo's React code wouldn't transfer (Svelte), so moving means a UI rewrite. Decision: stay on gomuks and try the FFI path first.
+
 ## Desktop port: macOS vs. Linux/Windows
 
 ### Architecture overview
@@ -75,3 +90,16 @@ None of these are blockers individually; the aggregate work is substantial but w
 - backend-auth.md: authentication mechanics, rate-limiting gap
 - dev-environment-gotchas.md: build commands, Vite dev server setup, CGO/goolm
 - release-pipeline.md: release workflow, signing, notarization, latest.json generation
+
+## Linux desktop build facts (2026-10-05 to 2026-10-07)
+
+Built as an AppImage and .deb in the OrbStack builder (`scripts/linux-build.sh`). Observed in session unless marked otherwise:
+- `tauri.linux.conf.json` is merged automatically over `tauri.conf.json` by the Tauri CLI. Arrays are replaced wholesale, not merged.
+- Tauri requires Apple-style bundle category names. `"Network"` fails; `"SocialNetworking"` works.
+- AppImage bundling inside OrbStack needs `APPIMAGE_EXTRACT_AND_RUN=1` and `NO_STRIP=true`, and `xdg-utils` installed (the bundler copies /usr/bin/xdg-open).
+- The bundle dir keeps packages from older versions unless it is cleared before a build.
+- Platform CSS scope: index.html sets `data-platform="linux"` from the user agent. Linux CSS lives under `html[data-tauri][data-platform="linux"]`, so macOS CSS is unaffected.
+- Timings: cold build about 4 minutes, incremental about 35 seconds.
+- Parallels on Apple Silicon runs arm64 guests only, so x86_64 needs a separate machine (tester "wreck").
+- AppImage on Arch needs fuse2 (general knowledge, not tested here).
+- YouTube playback on Linux needs gst-plugins-good and gst-libav (declared in the .deb depends). Not tested.

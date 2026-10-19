@@ -240,12 +240,66 @@ The `:has()` specificity (0,5,1) beats the element selector (0,0,1), so the most
 
 **Addition:** `--tertiary-text-color` was previously defined only in dark mode. Light mode now has `--tertiary-text-color: #9a9a9a` (2.8:1 contrast ratio on white, accepted hierarchy over maximum contrast). This token is used for captions and secondary text where lower emphasis is wanted (search hints, timestamps, etc.).
 
-## Space Membership: m.space.child Edges, DMs Never Children (2026-09-18)
+## Space Membership: m.space.child Edges, DMs Never Children (2026-09-18, AMENDED 2026-09-25)
 
-**Architecture:** Space membership is determined by `m.space.child` edges — events stored under the space's state tree. `SpaceEdgeStore.include(room)` returns `this.#flattenedRooms.has(room.room_id)`, where `#flattenedRooms` is populated from these edges.
+**Original (2026-09-18):** Space membership is determined by `m.space.child` edges — events stored under the space's state tree. `SpaceEdgeStore.include(room)` returns `this.#flattenedRooms.has(room.room_id)`, where `#flattenedRooms` is populated from these edges. Direct messages are never `m.space.child` events, so per-space DM filters are structurally empty.
 
-**DM exception:** Direct messages (rooms with `dm_user_id` set) are essentially never added as `m.space.child` events. Users do not join DMs to spaces. Therefore any per-space filter that includes DMs will be structurally empty (except `DirectChatSpace`, which uses `Boolean(room.dm_user_id)` and ignores parent membership entirely).
+**AMENDED (0.7.1, 2026-09-25):** Spaces now include DMs based on membership, matching Element's rule. A DM belongs to a space if its `dm_user_id` is a member of the space (joined/invited) or any descendant subspace (transitive membership check). `SpaceEdgeStore` gained `#members`, `#flattenedMembers`, `setMembers()`, `includeByEdges()`. Space unread badges recount from scratch on member change (incremental deltas would drift).
 
-**Consequence:** In a real space, the "Direct messages" sub-filter is permanently empty. The "Rooms" sub-filter shows the same rooms as "All chats" (since all child rooms are rooms, no DMs). These sub-filters are dead weight inside spaces and only work on Home and the orphans pseudo-space (`AllChatsSpace`, which has no membership gate).
+**Related facts:** The "Rooms" sub-filter uses `SubFilteredSpace.include()` which ANDs the parent space's membership with a per-group room predicate. Inside a space, both constraints are identical (all children are non-DMs), so the filter provides no additional filtering over "All chats." The filter is used to separate Rooms from DMs logically even when structurally both are the space's children.
 
-**Related fact:** The "Rooms" sub-filter uses `SubFilteredSpace.include()` which ANDs the parent space's membership (`#flattenedRooms`) with a per-group room predicate. It returns true only for rooms that are both (1) children of the space via `m.space.child` and (2) not DMs. Inside a space, both constraints are the same (all children are non-DMs), so the filter provides no additional filtering over "All chats."
+## WebKit execCommand Text Substitution: Smart Quotes on Programmatic Inserts (2026-09-25)
+
+**Behavior:** `document.execCommand("insertText", false, text)` is treated as if the user typed the text. macOS applies text substitution rules, including smart quotes, even though the text is inserted programmatically.
+
+**Problem (0.7.1):** Custom emoji markdown in the composer was `![:x:](mxc://… "Emoji: :x:")`. When inserted via execCommand, the closing straight quote `"` became a curled quote `"` (smart quote substitution). The backend markdown parser failed to match the pattern because the quote was wrong, so raw text was sent instead of the embedded emoji.
+
+**Fix:** Use parentheses instead of quotes: `![:x:](mxc://… (Emoji: :x:))`. Escape internal special characters: `\(`, `\)`, `\\`. Parentheses are not subject to smart-quote substitution.
+
+**Applies to:** Any markdown-format content inserted via execCommand (not just emoji). When the exact text matters, wrap in characters that won't be substituted (parentheses, brackets, backticks).
+
+## Event-Content Clipping: Portal for Popovers (2026-09-25)
+
+**Behavior:** `div.event-content` in the timeline has `overflow: hidden` and `contain: strict`, which creates a stacking context and clips any children that overflow (e.g., popovers, tooltips).
+
+**Problem (0.7.0–0.7.1):** Reaction hover tooltip was positioned near the reaction pill but clipped by the event-content boundary. Other popovers (mention pills, reactions modal) could also be affected.
+
+**Fix:** Portal the popover to `document.body` with `position: fixed`. Portals render outside the timeline's stacking context, so they are not clipped.
+
+**Pattern:** Use React's `ReactDOM.createPortal(content, document.body)` for any popover, tooltip, or dropdown that needs to escape the event-content clip.
+
+## Lightbox Stacking Context: Above All Modals (2026-09-25)
+
+**Behavior:** `LightboxWrapper` renders after (higher in the tree) every `ModalWrapper`. Because React renders in order, a later child has higher z-index (or relies on tree order for stacking).
+
+**Consequence:** Modals rendered from inside the lightbox (e.g., download prompt) must be drawn INSIDE the lightbox div (e.g., `<div.lightbox-prompt>`), not as a separate modal. If rendered as a separate `ModalWrapper`, it would sit below the lightbox and be obscured.
+
+**Pattern:** Conditional render: if `showDownloadPrompt && lightboxOpen`, render the prompt inside a `<div.lightbox-prompt>` rather than as a sibling modal.
+
+## Space Unread Counts: Recount on Member Change (2026-09-25)
+
+**Behavior:** Space unread badges aggregate the badge counts of all rooms in the space. When the space's membership changes (via setMembers), the badge stale because the set of rooms changed.
+
+**Problem:** Incremental deltas (add/remove counts) would drift if a new room joins the space and already had unread events locally.
+
+**Fix:** On member change, recount from scratch via `#recountSpaceUnreads()`, which iterates `roomListEntries.filter(include)` and sums their badge counts.
+
+**Implementation:** `StateStore.spaceMembersMaybeChanged(roomID)` is called on member updates, batched via `queueMicrotask` to coalesce rapid changes. Triggers a StateStore update, which causes RoomList re-render and picks up the new badge.
+
+## Room List Filters: Re-render Enough for Changes (2026-09-25)
+
+**Behavior:** Room list filtering happens at render time via `roomListFilterFunc` (a function passed to RoomList that decides which rooms are visible). When the filter inputs change (e.g., a sub-filter chip is clicked), the state that drove the filter change updates, causing RoomList to re-render.
+
+**Consequence:** A full re-render is sufficient — there is no separate "apply filter" step or "refresh" button. Changing `activeSubFilter` state triggers a re-render, and the useMemo that applies the filter runs again with the new `activeSubFilter`, producing the new shape.
+
+**Pattern:** Any change to room-list-shape controls (sub-filters, sort state, etc.) just updates the state; the rendering automatically follows.
+
+## Member List Loading: Lazy per Space (2026-09-25)
+
+**Behavior:** Member lists are loaded differently depending on whether the backend has them locally cached (`has_member_list` flag on the space):
+- **Cached locally:** loaded at `init_complete` event (startup) — no server call needed
+- **Not cached:** loaded on space selection via `client.loadSpaceMembers(spaceID)` — fetches from the backend
+
+**Implementation:** `MainScreen.setSpace()` recursively calls `client.loadSpaceMembers` for any subspace in the selection path. This ensures the current space and all its ancestors have members loaded (needed for transitive membership checks).
+
+**Pattern:** When space selection changes, trigger member loads and don't wait for them to complete — space contents are displayed with the members discovered so far, and the UI updates as members arrive from the server.

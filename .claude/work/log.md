@@ -2,6 +2,105 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-10-08 13:11
+
+**Session Summary**: Short session on 2026-10-08. It resumed from the 2026-10-07 checkpoint, then the user reported a new bug: in the release app (0.7.3), hovering a reaction pill makes the "who reacted" tooltip blink and disappear. The user thinks it happens with custom emoji specifically. Each time it happens, the room list scrolls down by about 1px, so repeated hovering slowly scrolls the room list. The bug is NOT resolved; the user parked it ("ignore for now").
+
+**Decisions Made**:
+- None (bug parked by user)
+
+**Actions Taken**:
+- Launched the dev app with nohup (fnm exec --using=22.23.1, ./node_modules/.bin/tauri dev). Still running at checkpoint.
+- Wrote temporary dev-only instrumentation: a logger that records capture-phase scroll events, focusin, scrollTop setter calls, scrollIntoView/scrollTo/scrollBy/scroll/focus calls with stack traces, and elements added directly under body. Events sent with import.meta.hot.send("echo:debug", ...); a small Vite plugin listens with server.ws.on("echo:debug") and console.logs them to the tauri dev stdout.
+- Removed the instrumentation from the source tree (git checkout of the hooks in web/src/main.tsx and web/vite.config.ts). Reference copies parked at .claude/work/mockups/debug-scroll.ts and .claude/work/mockups/vite-debug-sink.ts. To re-add: `if (import.meta.env.DEV) void import("./debug-scroll.ts")` after the index.css import in main.tsx; import and add debugSink to the plugins array in vite.config.ts (Vite restarts itself).
+
+**Context/Thoughts**:
+- Verified (code): EventReactions in web/src/ui/timeline/TimelineEvent.tsx (around lines 111-120) portals the tooltip to document.body and hides it on ANY capture-phase scroll event on window.
+- Verified (dev): could not reproduce. Instrumentation logged 10 reaction hovers; the tooltip was added to body each time, with zero scroll events, zero focus changes and zero programmatic scroll calls.
+- Verified (release bundle): web/dist/assets/index-CZhe0je8.css has a body>div.reaction-tooltip rule identical to dev (position fixed, pointer-events none).
+- Inferred: a 1px room-list scroll fires the window scroll listener and hides the tooltip. Assumption: the scroll event is real and not a side effect of the tooltip itself.
+- Unknown: what causes the 1px room-list scroll. Unknown whether the same room and reaction were hovered in dev as in the release app, and whether the release app still does it right after a fresh launch (both questions unanswered).
+- Next step if it persists: instrument a local release (production) build to catch the scroll there.
+
+## 2026-10-07 12:04
+
+**Session Summary**: Session spanning 2026-10-05 to 2026-10-07 shipped echo 0.7.2 (2026-10-06: YouTube embed, unread DMs in the space drawer, DM red dot) and 0.7.3 (2026-10-07 ~12:00 PDT: read-receipt fix, YouTube follow-ups, widget permission prompt redesign, light-mode badge ink). Both releases notarized Accepted; feed latest.json verified serving 0.7.3 (log ~/Library/Logs/echo-release/release-0.7.3.log). All commits pushed to origin/main. A Linux client was started in parallel: an OrbStack builder produces an arm64 AppImage and .deb, not yet launched on a desktop. Two incidents: a disk cleanup broke every image and corrupted the Go build cache, and notarization returned 403 until the Apple Developer Program agreement was accepted.
+
+**Decisions Made**:
+- Unread DMs sit at the top of the open space's drawer. User iterated: top of rail rejected, then bottom of drawer, then top of drawer as final.
+- DM unread uses the red dot, not the full red @ badge, because the user found the full badge too loud. Real mentions keep the @ badge.
+- Rail DM tiles never take the glow pill, so the pill stays on the active view.
+- Rail DM tiles ignore double-click 2nd clicks and are inert while a drawer closes. Rationale: backend log showed a sliding closing drawer put a DM tile under the second click, which opened the DM and sent a read marker.
+- Rail shows all unread DMs regardless of space. Per-space filtering was offered as an alternative and not chosen.
+- YouTube embed: oEmbed and thumbnail fetched only when the card is near the screen, one player at a time, sandboxed iframe. Rationale not recorded in session (inferred: avoids contacting YouTube for links never viewed).
+- Widget permission prompt: no autofocus on Allow, so Enter cannot grant everything.
+- Read-receipt fix: scroll-to-bottom path now triggers the receipt effect. Root cause inferred from code, not hand-reproduced.
+- Linux config kept out of macOS paths: tauri.linux.conf.json and a data-platform="linux" CSS scope; macOS chrome untouched. Linux builds run from OrbStack via the release path, not GitHub Actions (user decision). Targets x86_64 and arm64.
+
+**Actions Taken**:
+- YouTube embed: new web/src/ui/urlpreview/YouTubeEmbed.tsx, youtube.ts, youtube.test.ts, YouTubeEmbed.css; wired in TimelineEvent.tsx; preference embed_youtube_links (Media, default on).
+- 0.7.3 YouTube follow-ups: module-level stopActivePlayer, IntersectionObserver at 200px, iframe sandbox flags, oEmbed fallback to normal URL preview, Shorts 9:16 frame.
+- Rail unread DMs: web/src/ui/roomlist/RailDMs.tsx; preference rail_unread_dms (Appearance, default on).
+- Accidental-read guard: double-click ignore plus pointer-events none while div.space-bar:has(> div.space-bar-under-layer.closing).
+- Preference dm_mention_colors (Appearance, default on); UnreadCount asMention prop producing class dm-mention.
+- TimelineView.tsx: bottomArrivals state bumped on scroll-to-bottom and added to the receipt effect deps; release notes known-issue entry removed.
+- Widget prompt redesign: web/src/ui/widget/PermissionPrompt.tsx and new PermissionPrompt.css; old rules removed from Widget.css; widget.tsx openPermissionPrompt curried with {name, url}.
+- index.css light root: --unread-counter-blue-text and --unread-counter-highlight-text defined.
+- Linux: scripts/linux-build.sh, scripts/linux/provision.sh, web/src-tauri/tauri.linux.conf.json, data-platform attribute in index.html, linux block in index.css. Built target/linux/arm64/echo_0.7.2_aarch64.AppImage and .deb.
+- Incident response: restarted the app after cache deletion (images restored); ran go clean -cache; accepted the updated Apple agreement before notarizing.
+- Work-state files and learnings updated at this checkpoint.
+
+**Context/Thoughts**:
+- Verified (observed): backend log showed mark_read working on 2026-10-06, which weakens the earlier WKWebView focus-event theory for read receipts.
+- Inferred: the read-receipt root cause (scrolledToBottom was a plain field, so the effect never re-ran). Not reproduced by hand; confirm in practice on 0.7.3.
+- Unknown: YouTube playback inside WKWebView has never been confirmed by the user.
+- Unknown: the Linux AppImage has never been launched on a desktop. Display-server notes are general knowledge, not tested.
+- Cache incident happened twice (2026-10-05 and 2026-10-06). Self-healing backend cache dir offered; user has not answered.
+- Notarization tip: a small test submit without --wait confirms agreement access before a 15-minute build. notarytool history does not check the agreement.
+
+## 2026-09-25 13:38
+
+**Session Summary**: Extended session from evening 2026-09-24 through 13:38 2026-09-25 building UI improvements from tester feedback and releasing echo 0.7.1. Major work: space rail thin divider above spaces, spaces show DMs by member rule (Element's model — space + subspace members via dm_user_id), custom emoji markdown root cause (macOS smart quotes via execCommand curled the closing quote, fix: parenthesised title with escaping), attachments handling (same-origin download links with target=_blank were swallowed by tauri-plugin-shell, fixed in capture phase with stopPropagation; wry on_download remembers destination from Requested event since Finished has none; downloads get quarantine xattr, open limited to allowlist). Lightbox restyled as modal box (blurred dim, rounded, toolbar inside). Reaction tooltip unclipped via portal. Composer format bar (bold/italic/strike/code/link via markdown, toggles off if already wrapped, execCommand insertText). Drag-drop anywhere on chat pane. Multiple attachments per message (one event per file, text on last, first send clears composer, upload chain sequential with try/catch). Upload dialog redesign (two columns, preview left, details right, same button pair as sign-in). Profile editor (display name / picture / bio, sidebar avatar button opens it without needing a room). All features coded and verified except profile editor (untested in running 0.7.1 build per user). 0.7.1 shipped 2026-09-25 ~13:30 PDT (app and DMG notarized Accepted, feed latest.json serving 0.7.1, release log ~/Library/Logs/echo-release/release-0.7.1.log). Tree clean except untracked .claude/work/mockups/ (older, not committed). Dev app stopped post-release.
+
+**Decisions Made**:
+- Space DMs by member rule matches Element (vs hiding empty filters or redefining DM scope)
+- Custom emoji title parenthesised, escaping internal chars (vs other quote styles)
+- Download prompt: two-column visual pattern, restricted opening to allowlist (vs any type)
+- Format bar markdown writes via execCommand, keyboard shortcuts removed at user request
+- Multi-file: one event per file, first send clears, rest batch
+- Lightbox above modals; download prompt drawn inside lightbox
+- Pop-up pattern: two columns, Cancel/Action button pair
+- Release 0.7.1 as patch (additive features, nothing user-facing removed)
+
+**Actions Taken**:
+- RoomList.tsx/RoomList.css: space-bar-divider when spaces.length > 1, animation timings .42s open / .84s close
+- SpaceEdgeStore: #members, #flattenedMembers, setMembers(), includeByEdges() for DM rule
+- StateStore: spaceMembersMaybeChanged() batched via queueMicrotask, #recountSpaceUnreads from scratch
+- emojiToMarkdown: parenthesised title with escaping
+- externallinks.ts: capture-phase listener with stopPropagation, unrevealed spoiler guard
+- lib.rs: wry on_download handler with destination memory, restrictive allowlist for open_path
+- Lightbox.tsx/Lightbox.css: blurred dim, rounded box, toolbar inside, download prompt in div.lightbox-prompt
+- ReactionPill: portal to document.body
+- FormatBar.tsx: bold/italic/strike/code/link markdown, toggle off if wrapped
+- RoomView.tsx: drag-drop overlay routing to roomContext.onFileDropped
+- ComposerState: extraMedia, upload chain via ref, sequential await with try/catch
+- MediaUploadDialog.tsx: two columns, preview + toggles + ranges, "Upload file N of M"
+- ProfileEditor.tsx: modal form for displayname/avatar_url/_gomuks_bio, sidebar entry point
+- Tests: web/src/api/statestore/space.test.ts (5 new tests)
+- Release 0.7.1: git tag v0.7.1, release.sh patch (notarized Accepted)
+
+**Context/Thoughts**:
+- Space member rule required lazy member-list loading via client.loadSpaceMembers for large spaces
+- Same-origin download link fix required understanding tauri-plugin-shell competing handler
+- execCommand("insertText") as typing allows text substitution; problem for emoji closing quote
+- Download allowlist chosen for safety; user can open others from Finder
+- Format bar built with keyboard shortcuts, removed at user request; tooltips show markdown
+- Multi-file upload required rethinking composer clearance (first send only)
+- Profile editor untested in production 0.7.1; tester (wreck) to verify
+- All features shipped; most unverified by user except in dev app
+- Release went clean one-shot; dev app stopped before release.sh
+- Next action: tester feedback on 0.7.1 features (space DMs, downloads, profile editor, multi-attachments)
+
 ## 2026-09-24 10:35
 
 **Session Summary**: Upstream sync completed: fetched gomuks releases v26.03 through v26.09 (v0.2603.0 through v0.2609.0), merged as separate commits on branch upstream-sync, main fast-forwarded to merge base (head 91d2f022 pushed). 0.7.0 released (minor bump due to upstream OAuth MSC removal + app fingerprint change). Post-merge echo changes: Inter 4.1 variable fonts bundled (web/src/fonts/, removes Google Fonts link), outgoing messages carry "app.gomuks": "echo" (was "web") unless hide-fingerprint pref on, "Request key" now ResultModal-styled, composer Tab no longer moves focus (preventDefault unless IME composing), macOS webview configured with allowsInlinePredictions (function macos_webview_configuration in lib.rs, new deps objc2 0.6 and objc2-web-kit 0.3, user confirmed inline predictions work + Tab accepts them). Release 0.7.0 had one hiccup (push rejected, .github/workflows changed, fix: restore echo's copies, move unpushed tag v0.7.0 to new commit, push main + tag manually, create release manually with gh). 19 unreleased upstream commits after v26.09 not merged (later sync can pick them up incremental). Untracked work-state files ready for checkpoint update. Tree clean, dev app stopped.

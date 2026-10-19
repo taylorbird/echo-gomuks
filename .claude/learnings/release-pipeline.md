@@ -137,3 +137,33 @@ This pins both `git push` (via the credential helper) and any subsequent `gh` CL
 **Verified post-merge:** go build -tags goolm,sqlite_fts5, tsc, npm run lint, vitest, production build all clean. Rebuild dev sidecar with same flags.
 
 **19 unreleased upstream commits** after v26.09 were not merged (they're on upstream/main but not tagged). Next sync can pick them up incrementally by fast-forwarding to a later tag or commit.
+
+## 0.7.1 Released 2026-09-25 (Single-Run Release, Stop Vite Process)
+
+**Version:** 0.7.1 (patch) shipped 2026-09-25 ~13:30 PDT with UI improvements: space rail divider, spaces show DMs by member rule, custom emoji markdown fix, file attachments with download prompt and allowlist, lightbox restyled, reaction tooltip unclipped, composer format bar, drag-drop upload, multi-file attachments, upload dialog redesign, profile editor. All features coded and verified (some untested by user in production build). App and DMG notarized Accepted. Feed latest.json serving 0.7.1.
+
+**Release ritual:** RELEASE_NOTES.md rewritten, git tag v0.7.1, release.sh patch (full pipeline clean in one run).
+
+**Critical gotcha (verified 0.7.1):** release.sh rewrites tauri.conf.json and Cargo.toml for the version bump. If `tauri dev` is running, the dev watcher sees both rewrites and triggers restart storms, which races the sidecar on port 29325 (sidecar gets killed and never restarts). **Solution:** STOP tauri dev AND the Vite node process on port 6173 before release.sh. Kill by: `pkill -f "tauri dev"`, `lsof -ti :6173 | xargs kill -9`, `lsof -ti :29325 | xargs kill -9`, or `pkill -f target/debug/app`. Verify all three are dead before running release.sh.
+
+**Push review coordination:** The PreToolUse hook requires a push review before `git push`. Release.sh pushes internally (where the hook cannot intercept), so run `/push-review` manually on the commit BEFORE launching release.sh. The internal push will then succeed without triggering the hook.
+
+## Notarization 403 "agreement missing or expired" (2026-10-06)
+
+**Symptom:** `notarytool submit` returns 403: "A required agreement is missing or has expired."
+
+**Fix:** the account holder accepts the updated Apple Developer Program License Agreement at developer.apple.com. Even after acceptance, a retry can still fail for a while (propagation delay); one more run failed before it passed.
+
+**Probe before a 15-minute build:** submit a small zip without `--wait`:
+```bash
+xcrun notarytool submit <small zip> --apple-id taylor.bird@gmail.com --team-id UFCDGSKCXB --password "$(security find-generic-password -s echo-notary -w)"
+```
+`notarytool history` does NOT check the agreement, so it proves nothing here.
+
+## Go build cache corruption after a cache cleanup (2026-10-05)
+
+**Symptom:** release.sh fails with "github.com/dlclark/regexp2/v2: no non-test Go files", even though `go mod verify` passes.
+
+**Cause:** a disk cleanup of ~/Library/Caches corrupted ~/Library/Caches/go-build.
+
+**Fix:** `go clean -cache`, then rerun release.sh.

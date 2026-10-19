@@ -14,3 +14,15 @@ Encrypted rooms never auto-load unless the `auto_load_encrypted_url_previews` pr
 - **wry/Tauri does NOT sync `document.title` to the native window title**, so polling `WebviewWindow::title()` can't be used as a JS→Rust channel. The collector script publishes via `location.hash` (`__OGRESULT__=` + percent-encoded JSON) and Rust polls `webview.url()` instead.
 - **macOS may throttle JS timers in invisible windows.** The collector's setInterval worked fine hidden in testing, but if `fetch_og_tags` starts timing out, make the fetch window visible-but-offscreen.
 - `og:image` from the webview tier is a direct https URL, not mxc — `URLPreview.tsx` branches on the `mxc://` prefix.
+
+## YouTube embed (added 0.7.2, follow-ups 0.7.3)
+- Bypasses homeserver previews. The card reads oEmbed directly from YouTube and the thumbnail from i.ytimg.com, so YouTube links never go through `/preview_url`.
+- Nothing is fetched until the card is within 200px of the screen (IntersectionObserver).
+- Click-to-play iframe from youtube-nocookie.com with `sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"`.
+- If oEmbed fails, the card falls back to the normal URL preview tier described above.
+- Shorts are detected with `isShort` and shown in a 9:16 frame.
+- One player at a time: module-level `stopActivePlayer`.
+- Encrypted rooms embed only when `auto_load_encrypted_url_previews` is on.
+- Preference `embed_youtube_links` (Media, default on).
+- Files: web/src/ui/urlpreview/YouTubeEmbed.tsx, youtube.ts, youtube.test.ts, YouTubeEmbed.css; wired in TimelineEvent.tsx (EventURLPreviews). Modelled on Sable's ClientPreview.tsx.
+- Unverified: playback inside WKWebView has not been confirmed by the user.

@@ -85,3 +85,30 @@ Note that `@tauri-apps/plugin-opener` has a split permission set:
 - `opener:allow-default-urls` grants the **URL scope** (http:/*, https:/*, mailto:*, tel:*)
 
 Without the URL scope permission, all calls fail silently with `ForbiddenUrl` error. Both must be granted in capabilities/default.json.
+
+## Same-Origin Download Links with Tauri on_download (2026-09-25)
+
+**Problem (0.7.1):** Same-origin media/file links in chat (`href="/media/upload/xyz"` with `target="_blank"`) were silently dropped. The shell plugin's injected listener was consuming them.
+
+**Solution:** Installed a capture-phase click handler that calls `stopPropagation()`, blocking the shell listener from seeing same-origin links. The handler re-clicks a target-less copy to trigger the browser's native download mechanic.
+
+**macOS Tauri wry on_download callback (2026-09-25):**
+
+The callback receives Requested and Finished events:
+- **Requested event:** has the destination path where wry will save (e.g., `~/Downloads/<filename>` with `"(<n>)"` suffix on collision)
+- **Finished event:** has the final result, but **no path field on macOS** — must remember the destination from the Requested event
+
+**Pattern (lib.rs attachment_download_handler):**
+1. Store destination from Requested: `pending_downloads.insert(url, path)`
+2. On Finished, look up the path: `let path = pending_downloads.remove(&url)`
+3. For allowlisted MIME types: open with `tauri_plugin_opener::open_path(path)`
+4. For everything else: reveal in Finder with `reveal_item_in_dir(path)`
+5. Downloads automatically carry `com.apple.quarantine` xattr (wry sets it; Gatekeeper marker)
+
+**Allowlist for auto-opening (0.7.1):**
+- Documents: pdf, txt, md, rtf, csv
+- Office: docx, xlsx, pptx, odt, ods, odp
+- Common media: mp3, m4a, aac, wav, flac, aiff, ogg, flv, mov, mp4, m4v, mkv, webm
+- Everything else (images, scripts, pkg, app, html, unknown): reveal in Finder
+
+Rationale: auto-opening executables, scripts, or HTML is a security risk; user can open them manually from Finder.
