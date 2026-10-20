@@ -1,0 +1,28 @@
+{
+  "$schema": "../../web/node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "echo",
+  "version": "0.1.0",
+  "identifier": "dev.tbird.echo.mobile",
+  "build": {
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.png"
+    ],
+    "iOS": {
+      "minimumSystemVersion": "16.0"
+    }
+  }
+}

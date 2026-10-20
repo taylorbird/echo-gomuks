@@ -25,6 +25,8 @@ declare global {
 		gomuksWebWasm?: boolean
 		// Injected by Tauri into its webview; absent in a plain browser.
 		__TAURI_INTERNALS__?: unknown
+		// Set by the iOS app, whose backend is linked in rather than run as a server.
+		__ECHO_FFI__?: boolean
 		vapidPublicKey?: string
 	}
 }

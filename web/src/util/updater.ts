@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { invoke } from "@tauri-apps/api/core"
-import { isTauri } from "@/api/backend.ts"
+import { isTauri, isTauriFFI } from "@/api/backend.ts"
 import { stashReleaseNotes } from "./releasenotes.ts"
 import Subscribable from "./subscribable.ts"
 
@@ -23,7 +23,8 @@ export type UpdateState = "idle" | "checking" | "downloading" | "ready"
 
 // Only the packaged app can update itself: `npm run dev` runs against the Vite dev server
 // (no bundle to replace), and the plain-web build has no Tauri IPC at all.
-const updatesSupported = isTauri && import.meta.env.PROD
+// Not on iOS (isTauriFFI): the app there has no updater plugin; updates come through the store.
+const updatesSupported = isTauri && !isTauriFFI && import.meta.env.PROD
 
 const updateStore = new Subscribable()
 // useSyncExternalStore compares snapshots with Object.is, so the snapshot has to be a stable

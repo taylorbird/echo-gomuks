@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "default",
+  "description": "The echo window: core events (the backend's event stream arrives as one).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

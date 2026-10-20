@@ -14,8 +14,9 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import React, { useEffect, useMemo } from "react"
-import { BACKEND_WS_URL } from "./api/backend.ts"
+import { BACKEND_WS_URL, isTauriFFI } from "./api/backend.ts"
 import Client from "./api/client.ts"
+import TauriFFIClient from "./api/ffiClient.ts"
 import RPCClient from "./api/rpc.ts"
 import SSEClient from "./api/sseclient.ts"
 import { getLocalStoragePreferences } from "./api/types/preferences"
@@ -32,6 +33,9 @@ import { startUpdateChecks } from "./util/updater.ts"
 import "./ui/login/SignedOut.css"
 
 function makeRPCClient(): RPCClient {
+	if (isTauriFFI) {
+		return new TauriFFIClient()
+	}
 	if (window.gomuksWebWasm) {
 		return new WasmClient()
 	}

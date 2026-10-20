@@ -29,7 +29,14 @@ export const isTauri = Boolean(window.__TAURI_INTERNALS__)
 //
 // Has a trailing slash so that `${BACKEND_URL}_gomuks/foo` is byte-identical to the
 // old relative `_gomuks/foo` when it's empty.
-export const BACKEND_URL = isTauri && import.meta.env.PROD ? "http://localhost:29325/" : ""
+//
+// On iOS the backend is linked into the app (gomuks's C FFI) and there is no HTTP server
+// at all: the app marks the page with __ECHO_FFI__ and answers _gomuks URLs (media,
+// URL previews) through its own gomuks:// scheme.
+export const isTauriFFI = isTauri && Boolean(window.__ECHO_FFI__)
+export const BACKEND_URL = isTauriFFI
+	? "gomuks://localhost/"
+	: isTauri && import.meta.env.PROD ? "http://localhost:29325/" : ""
 
 export const BACKEND_WS_URL = BACKEND_URL.replace(/^http/, "ws")
 
