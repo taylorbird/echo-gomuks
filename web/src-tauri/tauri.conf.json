@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "echo",
+  "productName": "echo-gomuks",
   "version": "0.7.4",
-  "identifier": "dev.tbird.echo",
+  "identifier": "dev.tbird.echo-gomuks",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:6173",
@@ -57,7 +57,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY5OTRFNkExN0RCRkQ0RUIKUldUcjFMOTlvZWFVYVdFN0txVjUybDhGR1FwNFpLa0swSjREVUV3UnFkL0VHbWZZK1h2N1Q5RnAK",
       "endpoints": [
-        "https://github.com/taylorbird/echo/releases/latest/download/latest.json"
+        "https://github.com/taylorbird/echo-gomuks/releases/latest/download/latest.json"
       ]
     }
   }

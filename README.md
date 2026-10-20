@@ -2,12 +2,15 @@
 
 <img src="design/echo-icon-facet-split-squircle.png" width="132" alt="echo">
 
-# echo
+# echo-gomuks
 
 A custom Matrix client for macOS, based on [gomuks](https://github.com/gomuks/gomuks).
 
-[![Latest release](https://img.shields.io/github/v/release/taylorbird/echo?label=download&color=7C3AED)](https://github.com/taylorbird/echo/releases/latest)
-[![Platform](https://img.shields.io/badge/macOS-Apple%20Silicon-8B5CF6)](https://github.com/taylorbird/echo/releases/latest)
+**Frozen.** This was echo up to v0.7.4. echo is being rebuilt on Sable-next at
+[taylorbird/echo](https://github.com/taylorbird/echo); this repository gets no new releases.
+
+[![Latest release](https://img.shields.io/github/v/release/taylorbird/echo-gomuks?label=download&color=7C3AED)](https://github.com/taylorbird/echo-gomuks/releases/latest)
+[![Platform](https://img.shields.io/badge/macOS-Apple%20Silicon-8B5CF6)](https://github.com/taylorbird/echo-gomuks/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-3B82F6)](LICENSE)
 
 </div>
@@ -24,7 +27,7 @@ talks to your homeserver directly.
 
 ## Install
 
-Download the latest `.dmg` from **[Releases](https://github.com/taylorbird/echo/releases/latest)**,
+Download the latest `.dmg` from **[Releases](https://github.com/taylorbird/echo-gomuks/releases/latest)**,
 open it, and drag **echo** to your Applications folder.
 
 The app is signed with a Developer ID and notarized by Apple, so it opens normally — no
@@ -71,7 +74,7 @@ echo is early. Things that are known-rough:
 - macOS only — iOS and Android are planned but not started
 - No automated release testing yet; each build is verified by hand
 
-Found something broken? [Open an issue](https://github.com/taylorbird/echo/issues) with your macOS
+Found something broken? [Open an issue](https://github.com/taylorbird/echo-gomuks/issues) with your macOS
 version and what you were doing.
 
 ## Building from source
@@ -79,7 +82,7 @@ version and what you were doing.
 Requires Go, Node, and Rust.
 
 ```sh
-git clone https://github.com/taylorbird/echo.git
+git clone https://github.com/taylorbird/echo-gomuks.git
 cd echo/web
 npm install
 npm run tauri dev

@@ -21,7 +21,7 @@ BUNDLE_DIR="$REPO_ROOT/web/src-tauri/target/release/bundle"
 SIGNING_KEY="$HOME/.tauri/echo.key"
 APPLE_ACCOUNT="taylor.bird@gmail.com"
 APPLE_TEAM="UFCDGSKCXB"
-GH_REPO="taylorbird/echo"
+GH_REPO="taylorbird/echo-gomuks"
 GH_ACCOUNT_REQUIRED="taylorbird"
 GH_REPO_URL="https://github.com/$GH_REPO"
 
@@ -247,8 +247,8 @@ mkdir -p "$REPO_ROOT/web/src-tauri/binaries"
 # 4. Bundle, sign, notarize
 # --------------------------------------------------------------------------------------------
 
-APP="$BUNDLE_DIR/macos/echo.app"
-TARBALL="$BUNDLE_DIR/macos/echo.app.tar.gz"
+APP="$BUNDLE_DIR/macos/echo-gomuks.app"
+TARBALL="$BUNDLE_DIR/macos/echo-gomuks.app.tar.gz"
 SIG_FILE="$TARBALL.sig"
 
 # Clear the artifacts we're about to verify. Otherwise a build that fails partway could leave
@@ -259,7 +259,7 @@ case "$APP" in
 *) die "refusing to delete outside the bundle dir: $APP" ;;
 esac
 rm -rf "$APP" "$TARBALL" "$SIG_FILE"
-rm -f "$BUNDLE_DIR"/dmg/echo_"$VERSION"_*.dmg
+rm -f "$BUNDLE_DIR"/dmg/echo-gomuks_"$VERSION"_*.dmg
 
 step "Bundling, signing and notarizing (this waits on Apple; expect several minutes)"
 # ibtoold (actool's persistent daemon) wedges unpredictably: .icon compiles crash with
@@ -317,10 +317,10 @@ step "Locating artifacts"
 [[ -f "$SIG_FILE" ]] || die "missing updater signature: $SIG_FILE"
 
 shopt -s nullglob
-DMG_MATCHES=("$BUNDLE_DIR"/dmg/echo_"$VERSION"_*.dmg)
+DMG_MATCHES=("$BUNDLE_DIR"/dmg/echo-gomuks_"$VERSION"_*.dmg)
 shopt -u nullglob
 [[ ${#DMG_MATCHES[@]} -eq 1 ]] \
-	|| die "expected exactly one DMG matching echo_${VERSION}_*.dmg, found ${#DMG_MATCHES[@]}"
+	|| die "expected exactly one DMG matching echo-gomuks_${VERSION}_*.dmg, found ${#DMG_MATCHES[@]}"
 DMG="${DMG_MATCHES[0]}"
 
 echo "  app:     $APP"
