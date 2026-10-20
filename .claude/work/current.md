@@ -4,15 +4,16 @@
 echo (gomuks fork; repository `taylorbird/echo` on GitHub, bundle ID `dev.tbird.echo`)
 
 ## Objective
-Fork gomuks and redo the frontend to make it more visually appealing, wrapped as a native macOS app plus an iOS companion app (forked Element X scaffold; design language as cross-platform contract, not shared code; Android out of scope). Linux desktop (Tauri AppImage + deb) is a build target, in progress. Also evaluating gomuks FFI (pkg/ffi) as the path to an iOS echo instead of the Element X fork.
+Fork gomuks and redo the frontend to make it more visually appealing, wrapped as a native macOS app plus an iOS companion app (forked Element X scaffold; design language as cross-platform contract, not shared code; Android out of scope). Linux desktop (Tauri AppImage + deb) is a build target, in progress. iOS path under test: gomuks FFI (pkg/ffi) inside a Tauri iOS app (branch mobile-ffi), instead of the Element X fork. Open decision: rebuild echo on Sable-next (see Current Focus).
 
 ## Current Focus
 - 0.7.4 shipped 2026-10-19: MSC4529 profile overrides + centred profile card (signed, notarized, feed verified). Release: https://github.com/taylorbird/echo/releases/tag/v0.7.4
-- Branch `mobile-ffi` (local, from 61afc380, checked out, not pushed): mobile spike started. Step 1 approved.
+- Branch `mobile-ffi` (local only, not pushed): mobile spike steps 1 and 2 done (ef5fbece, 6f61026a). Step 2 verified in the iPhone 16 Pro simulator (iOS 18.5): app launches, gomuks starts, sign-in screen renders. Sign-in not done (needs the user and the Simulator GUI).
+- PENDING DECISION (2026-10-20): the user wants to rebuild echo entirely on Sable-next (Svelte 5 + Rust core on matrix-rust-sdk, Tauri on all platforms), recreating all features and UI, not as a branch off echo's main. Not decided. No code until the questions in questions.md are settled.
 - Linux arm64 AppImage built in OrbStack, never launched on a desktop.
 
 ## Last Checkpoint
-2026-10-19 17:34 PDT
+2026-10-20 08:45 PDT
 
 ## Constraints
 Full ledger: .claude/work/constraints.md (★ = added 2026-10-07, ◆ = added 2026-10-19)
@@ -50,7 +51,6 @@ Full ledger: .claude/work/constraints.md (★ = added 2026-10-07, ◆ = added 20
 - ◆ Override/profile picture uploads: PNG, JPEG, WebP, GIF only, decode-checked
 
 ## Next Actions (Priority Order)
-1. Mobile spike step 1 (branch mobile-ffi): `rustup target add aarch64-apple-ios-sim aarch64-apple-ios` (approved), then build pkg/ffi as a static c-archive for the iOS simulator (GOOS=ios GOARCH=arm64, CGO via `xcrun -sdk iphonesimulator clang`, tags goolm,sqlite_fts5). Env: Xcode 27.1, iOS SDK 27.1, iPhone 16 simulators, Go 1.27.1.
-2. Spike step 2: bare Tauri iOS app linking the archive; GomuksInit/GomuksStart; room list via the event callback.
-3. Spike steps 3-4: transport in web/src/api over Tauri invoke/events; iOS notification extension calling GomuksHandlePush within the memory limit (needs Apple developer account push entitlement + a Sygnal push gateway).
-4. Carry forward: Linux AppImage test, reaction-tooltip bug, styling leftovers, circle-or-square avatar TODO, and the unverified-in-app items in questions.md (Start chat confirm, override drag-and-drop).
+1. Settle the Sable-next rebuild questions (questions.md, "2026-10-20") before any code.
+2. If staying on gomuks: finish spike sign-in (user + Simulator GUI), then the iOS notification extension and a GomuksHandlePush memory test (needs Apple developer account push entitlement + Sygnal gateway).
+3. Carry forward: Linux AppImage test, reaction-tooltip bug, styling leftovers, circle-or-square avatar TODO, unverified-in-app items in questions.md.

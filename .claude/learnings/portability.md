@@ -38,6 +38,17 @@ Assessment findings from evaluating iOS/Android and Linux/Windows ports of echo.
 - **Verified in the iPhone 16 Pro simulator** (`xcrun simctl spawn`): GomuksInit returned a handle, GomuksStart returned 0, SQLite created and migrated both databases (main v27, crypto v21), the event callback received client_state and sync_status, GomuksDestroy shut down cleanly. Not logged in, so no sync yet.
 - SQLite warns `gethostuuid() is disabled` at build time on iOS; harmless.
 
+### Spike step 2 result (2026-10-20)
+
+- **Verified in the iPhone 16 Pro simulator (iOS 18.5):** the Tauri iOS app (mobile/src-tauri, its own Cargo workspace) launches, gomuks starts from the app data dir (its log in the app container confirms), and echo's sign-in screen renders from backend state. Sign-in not yet done.
+- `tauri ios init` (tauri-cli 2.11.4) reinstalls Homebrew libimobiledevice and its deps on its own, and requires CocoaPods (`pod install`). Its gem install needs sudo and fails, so CocoaPods was installed with `brew install cocoapods` (pulls Homebrew Ruby).
+- `tauri ios build` refuses to build unless a simulator runtime matching the SDK is installed ("Xcode Simulator SDK 27.1 is not installed"). This Mac has SDK 27.1 but only the iOS 18.5 runtime. Workaround: mobile/xcode-build-rust.sh replaces `tauri ios xcode-script` in gen/apple/project.yml (regenerate with `xcodegen generate`). It builds the lib with plain cargo for aarch64-apple-ios-sim / aarch64-apple-ios and copies it to gen/apple/Externals/arm64/<config>/libapp.a.
+- Build: `xcodebuild -project mobile/src-tauri/gen/apple/echo-mobile.xcodeproj -scheme echo-mobile_iOS -configuration debug -sdk iphonesimulator -destination id=<udid>`. Install with `xcrun simctl install`; launch with `xcrun simctl launch --console-pty <udid> dev.tbird.echo.mobile`.
+- Building with plain cargo needs tauri's `custom-protocol` feature. Without it, a debug build looks for a dev server ("Failed to request tauri://localhost/").
+- The user's homeserver (synapse.mssj.me, MAS at login.synapse.mssj.me) offers only m.login.sso / m.login.token. MAS advertises device_authorization_endpoint, and echo's login screen prefers the device-code flow, which runs entirely through backend RPC, so it works over the FFI (inferred from the code; not yet exercised).
+- Simulator.app was not found on this Mac (not in Xcode 27's Contents/Developer/Applications). `xcrun simctl` works headless. The user needs the Simulator GUI to sign in.
+- Known UI issue: the "ECHO" wordmark sits under the iOS status bar (no safe-area handling).
+
 ## Sable-next as an alternative base (researched 2026-10-19)
 
 Sable v2 (git.sable.moe/SableClient/Sable-next), from the research agent's reading of the repo: from-scratch rewrite started 2026-08-10, v2.0.0 on 2026-10-10. Svelte 5 UI over a Rust core on a forked matrix-rust-sdk; the core runs natively (SQLite) in Tauri on desktop, iOS and Android, or as WASM in the browser. Requires sliding sync (synapse.mssj.me advertises `org.matrix.simplified_msc3575`, verified). AGPL-3.0-or-later. One author wrote ~6,300 of the commits. CONTRIBUTING.md declines AI-assisted contributions, so echo's work could never go upstream; forks are welcome. Echo's React code wouldn't transfer (Svelte), so moving means a UI rewrite. Decision: stay on gomuks and try the FFI path first.

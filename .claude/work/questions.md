@@ -2,6 +2,18 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
+## New this session (2026-10-20)
+
+- **Rebuild echo on Sable-next: go or no-go, and how** — the user wants echo rebuilt entirely on Sable-next (Svelte 5 UI over a Rust core on matrix-rust-sdk; Tauri on desktop, iOS and Android), recreating all echo features and UI, not as a branch off echo's main. Not decided. Settle before any code:
+  - Repo/fork location: a new repo, or elsewhere?
+  - Hard fork vs tracking upstream: Sable's CONTRIBUTING.md declines AI-assisted contributions, so nothing can go upstream. Upstream lands roughly 2,000-3,000 commits a month, mostly from one main author.
+  - Does current echo (gomuks) keep shipping during the rebuild?
+  - Feature-parity order.
+  - Platform priority.
+  - iOS distribution: Apple developer account and push gateway.
+  - Context already recorded (portability.md, 2026-10-19): echo's React code would not transfer to Svelte; Sable-next requires sliding sync (synapse.mssj.me advertises simplified_msc3575, verified).
+  - Claude's reasons against the rebuild were requested by the user; they are not recorded here yet.
+
 ## New this session (2026-10-19)
 
 - **Real OS drag-and-drop into the Tauri window is unverified** — only synthetic DOM events were tested. Check a Finder drag and a screenshot-tool drag onto the profile override editor and the upload dialog.

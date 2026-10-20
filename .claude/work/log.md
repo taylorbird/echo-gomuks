@@ -2,6 +2,28 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-10-20 08:45
+
+**Session Summary**: Session covering 2026-10-19 17:34 to 2026-10-20 08:45. Completed mobile spike step 2 on local branch `mobile-ffi`: a separate Tauri iOS app that links the gomuks FFI archive and receives backend events through the callback. Verified in the iPhone 16 Pro simulator: the app launches, gomuks starts from the app data dir, and echo's sign-in screen renders from backend state. Sign-in is not done. After a long conversation with another Claude session, the user said they want to rebuild echo entirely on Sable-next (Svelte 5 + Rust core on matrix-rust-sdk, Tauri on all platforms), recreating all features and UI, not as a branch off echo's main. Claude was asked for reasons not to and for the questions to settle first; a checkpoint was required before starting. Nothing is decided.
+
+**Decisions Made**:
+- Sable-next rebuild: not decided. No code until the open questions are settled (recorded in questions.md under 2026-10-20).
+- Spike step 2 shape: mobile/src-tauri is its own Cargo workspace and the desktop app is untouched. The frontend uses TauriFFIClient (web/src/api/ffiClient.ts) when the app sets window.__ECHO_FFI__; BACKEND_URL is gomuks://localhost there; the desktop updater is off on iOS.
+- Commits on `mobile-ffi`, local only, not pushed: ef5fbece "mobile spike step 1" (scripts/ios-ffi-build.sh); 6f61026a "mobile spike step 2".
+
+**Actions Taken**:
+- Step 2 bridge in mobile/src-tauri/src/gomuks.rs: Tauri commands gomuks_start, gomuks_command, gomuks_upload; backend events emitted as "gomuks-event"; gomuks:// scheme serving _gomuks/media (letter-tile fallback) and _gomuks/url_preview.
+- Build workaround: mobile/xcode-build-rust.sh replaces the xcode-script in gen/apple/project.yml; CocoaPods installed with brew.
+- Updated learnings/portability.md with a "Spike step 2 result (2026-10-20)" subsection under the FFI path section.
+- Updated work-state: current.md (Current Focus, Next Actions, checkpoint) and questions.md (new 2026-10-20 section).
+
+**Context/Thoughts**:
+- Verified (observed): the simulator run showed the app launch, gomuks start (log in the app container) and the sign-in screen from backend state. `tauri ios build` refused without a simulator runtime matching SDK 27.1; only iOS 18.5 is installed.
+- Inferred: sign-in should work through the device-code flow, since it runs entirely through backend RPC. Not yet tried.
+- Verified (from 2026-10-19 research, recorded in portability.md): Sable-next needs sliding sync (synapse.mssj.me advertises simplified_msc3575), Svelte means echo's React code does not transfer, and its CONTRIBUTING.md declines AI-assisted contributions.
+- Unknown: whether a Sable-next rebuild is the better base for the iOS target, and what the user's reasons for it are beyond the other session's conversation. Claude's reasons against it were requested and are not yet recorded.
+- Next: settle the questions. If staying on gomuks, finish sign-in with the user at the Simulator GUI (Simulator.app is not on this Mac; `xcrun simctl` works headless).
+
 ## 2026-10-19 17:34
 
 **Session Summary**: Session covering 2026-10-16 to 2026-10-19. Implemented MSC4529 client-side profile overrides (private nicknames and pictures per user, stored as account data) and replaced the side-panel user view with a centred profile card. Released echo 0.7.4 on 2026-10-19 (signed, notarized; updater feed verified serving 0.7.4 with the new notes). Researched Sable-next (git.sable.moe/SableClient/Sable-next) as an alternative base and found upstream gomuks's C FFI (pkg/ffi) as a mobile path; the user chose to stay on gomuks and try the FFI path first. Created local branch `mobile-ffi` from 61afc380 (checked out, not pushed) and began the mobile spike; the user approved step 1, including adding the iOS Rust targets.
