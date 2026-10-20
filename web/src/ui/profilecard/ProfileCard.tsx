@@ -185,6 +185,11 @@ const ProfileCard = ({ userID, roomCtx }: ProfileCardProps) => {
 		content: <ProfileOverrideEditor client={client} userID={userID} realProfile={realProfile} field={field}/>,
 	})
 	const onMessage = () => {
+		// Making a new DM invites them, so ask first, as the side panel did. Going to
+		// an existing one stays a single click.
+		if (!hasDM && !window.confirm(`Start a chat with ${realName}? This sends them an invite.`)) {
+			return
+		}
 		setDMPending(true)
 		startDM(client, mainScreen, userID).then(
 			() => closeCard(),
