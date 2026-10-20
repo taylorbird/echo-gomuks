@@ -2,7 +2,7 @@
 	"name": "gomuks-web",
 	"private": true,
 	"license": "AGPL-3.0-or-later",
-	"version": "0.7.3",
+	"version": "0.7.4",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
