@@ -30,6 +30,14 @@ Assessment findings from evaluating iOS/Android and Linux/Windows ports of echo.
 - **Unknown:** Go runtime + SQLite inside the NSE memory limit (biggest risk); Tauri iOS maturity for a full app; whether upstream ships a mobile app on this FFI.
 - **Next step agreed 2026-10-19:** a spike on a branch: build the FFI for the iOS simulator, link it into a bare Tauri iOS app, show the room list through it.
 
+### Spike step 1 result (2026-10-19): gomuks runs on the iOS simulator
+
+- `scripts/ios-ffi-build.sh <simulator|device>` builds `pkg/ffi` with `-buildmode=c-archive` (GOOS=ios GOARCH=arm64, Xcode clang, tags goolm,sqlite_fts5) into `target/ios-ffi/<target>/` with `gomuksffi.h`. Archive ~47MB, all 14 `Gomuks*` functions exported. Both simulator and device builds succeed.
+- **Gotcha:** set `CXX`/`CGO_CXXFLAGS` as well as `CC`/`CGO_CFLAGS`. libde265 (HEIC decoding) is C++; with only CC set it compiled for macOS and the archive mixed platforms (one object platform 1 among 164 platform 7), which Xcode won't link. The script checks every object's LC_BUILD_VERSION platform.
+- Linking a C caller needs `-lresolv -lc++ -framework CoreFoundation -framework Security -framework SystemConfiguration`, and the include path `pkg/ffi` (the generated header just `#include`s `gomuksffi.h`).
+- **Verified in the iPhone 16 Pro simulator** (`xcrun simctl spawn`): GomuksInit returned a handle, GomuksStart returned 0, SQLite created and migrated both databases (main v27, crypto v21), the event callback received client_state and sync_status, GomuksDestroy shut down cleanly. Not logged in, so no sync yet.
+- SQLite warns `gethostuuid() is disabled` at build time on iOS; harmless.
+
 ## Sable-next as an alternative base (researched 2026-10-19)
 
 Sable v2 (git.sable.moe/SableClient/Sable-next), from the research agent's reading of the repo: from-scratch rewrite started 2026-08-10, v2.0.0 on 2026-10-10. Svelte 5 UI over a Rust core on a forked matrix-rust-sdk; the core runs natively (SQLite) in Tauri on desktop, iOS and Android, or as WASM in the browser. Requires sliding sync (synapse.mssj.me advertises `org.matrix.simplified_msc3575`, verified). AGPL-3.0-or-later. One author wrote ~6,300 of the commits. CONTRIBUTING.md declines AI-assisted contributions, so echo's work could never go upstream; forks are welcome. Echo's React code wouldn't transfer (Svelte), so moving means a UI rewrite. Decision: stay on gomuks and try the FFI path first.

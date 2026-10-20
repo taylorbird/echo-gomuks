@@ -2,6 +2,37 @@
 
 <!-- Entries prepended, newest first -->
 
+## 2026-10-19 17:34
+
+**Session Summary**: Session covering 2026-10-16 to 2026-10-19. Implemented MSC4529 client-side profile overrides (private nicknames and pictures per user, stored as account data) and replaced the side-panel user view with a centred profile card. Released echo 0.7.4 on 2026-10-19 (signed, notarized; updater feed verified serving 0.7.4 with the new notes). Researched Sable-next (git.sable.moe/SableClient/Sable-next) as an alternative base and found upstream gomuks's C FFI (pkg/ffi) as a mobile path; the user chose to stay on gomuks and try the FFI path first. Created local branch `mobile-ffi` from 61afc380 (checked out, not pushed) and began the mobile spike; the user approved step 1, including adding the iOS Rust targets.
+
+**Decisions Made**:
+- MSC4529 storage: account data `org.matrix.msc4529.profile_overrides`; prefer stable `m.profile_overrides` when present; writes go to whichever type was read. Leaf module web/src/api/profileoverrides.ts.
+- getDisplayname/getAvatarURL apply overrides; getRealDisplayname is used for anything sent to a room. A private nickname must never reach the room.
+- MSC4483-encrypted override events are ignored and editing is refused, so plaintext never overwrites ciphertext.
+- User profiles open as a card via a setRightPanel interception; the side-panel user view is left in place but unreachable, to keep upstream syncs clean. Lists stay in the docked panel.
+- Card design approved by the user: two columns, sticky "User profile" header, Message/Start chat, Nickname, Picture, a "..." menu for technical items, Ignore as a small red link, "[override]" label on overridden names and pictures. Mention button removed at user request.
+- Start chat now confirms before creating a new DM.
+- Override and profile pictures limited to PNG, JPEG, WebP and GIF, decode-checked (an SVG uploaded but could not be thumbnailed).
+- 0.7.4 released as a patch bump, following the 0.7.x convention.
+- Stay on gomuks rather than move to Sable-next (Svelte + Rust, about two months old, one main author, CONTRIBUTING.md declines AI-generated contributions).
+- Avatar circle-or-square option: TODO only. The user believed it existed; it does not.
+
+**Actions Taken**:
+- web/src/api/profileoverrides.ts (new); profile card in web/src/ui/profilecard/ (ProfileCard.tsx, CardRow.tsx, SharedRoomsRow.tsx, SecurityRow.tsx, RoomRow.tsx, startdm.ts, open.tsx, ProfileCard.css); override editor web/src/ui/modal/ProfileOverrideEditor.tsx; preparePicture in web/src/ui/modal/uploadavatar.ts (also used by the own-profile editor).
+- Commits on main, all pushed: aaac8e64 "profile card and MSC4529 profile overrides"; 64062e8c notes commit; 833e143b "profile card: ask before Start chat creates a DM"; 61afc380 "Release v0.7.4".
+- Released 0.7.4 (signed, notarized, feed verified): https://github.com/taylorbird/echo/releases/tag/v0.7.4
+- Headless WebKit visual checks of the card and editors (Playwright 1.60.0, 1512x982 at 2x); typecheck, lint and tests clean.
+- Created branch mobile-ffi from 61afc380 and checked it out. Approved rustup target add for the iOS simulator and device targets.
+- Updated learnings: gomuks-frontend-structure.md (modal close handler, overflow, icon fill, media fallback, profile card files); dev-environment-gotchas.md (pnpm via corepack broken, Playwright harness recipe).
+
+**Context/Thoughts**:
+- The 300px side panel was cramped on the user's 14-inch MacBook; the card solves that and can be reused for a right-click card later.
+- Verified (observed): the Start chat confirmation was verified by typecheck, lint and tests only; the dev app was down, so it was not seen in the running app.
+- Inferred: real OS drag-and-drop into the Tauri window behaves like the synthetic DOM events tested; not verified.
+- Open follow-ups are listed in questions.md (self timezone and pronoun editing lost with the side panel; real names still shown in several places; RELEASE_NOTES.md still holds the 0.7.4 notes uncommitted).
+- Next: mobile spike step 1 on branch mobile-ffi.
+
 ## 2026-10-08 13:11
 
 **Session Summary**: Short session on 2026-10-08. It resumed from the 2026-10-07 checkpoint, then the user reported a new bug: in the release app (0.7.3), hovering a reaction pill makes the "who reacted" tooltip blink and disappear. The user thinks it happens with custom emoji specifically. Each time it happens, the room list scrolls down by about 1px, so repeated hovering slowly scrolls the room list. The bug is NOT resolved; the user parked it ("ignore for now").

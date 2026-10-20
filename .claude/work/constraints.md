@@ -2,6 +2,35 @@
 
 Each constraint is dated with its origin and rationale. One-liners live in current.md for quick reference; full details here.
 
+## 2026-10-19 (MSC4529 profile overrides, profile card, 0.7.4)
+
+### Anything sent to a room uses real names
+Mentions (autocomplete, sender-click), widget userDisplayName, and any other room-bound text use `getRealDisplayname`. `getDisplayname` and `getAvatarURL` apply overrides. **Rationale:** a private nickname is local-only and must never reach the room.
+
+### Profile override storage and encryption rules
+Account data `org.matrix.msc4529.profile_overrides`; the stable `m.profile_overrides` type is preferred when present; writes go to whichever type was read (MSC unstable-prefix rules). Module: web/src/api/profileoverrides.ts (leaf module, no store imports). MSC4483-encrypted override events are ignored and editing is refused. **Rationale:** plaintext must never overwrite ciphertext.
+
+### User profiles open as a card, not the side panel
+`MainScreen.setRightPanel({type:"user"})` is intercepted and calls `openProfileCard` (web/src/ui/profilecard/open.tsx), opened as a nestable modal so its sub-pop-ups stack above it. The side-panel UserInfo view is unreachable but left untouched for clean upstream syncs. Lists (members, threads, pinned, search) stay in the docked right panel. **Rationale:** the 300px panel was cramped on a 14-inch MacBook; the card is also meant for a future right-click card.
+
+### Custom modal boxes: inner wrapper overflow visible
+profile-card-box and profile-override-box set `div.modal-box-inner` to `overflow: visible`. **Rationale:** that wrapper is overflow:auto (ui/modal/Lightbox.css); content past its edge lets WebKit scroll the box sideways on focus/hover and clips absolutely positioned bars.
+
+### Override and profile pictures: PNG, JPEG, WebP, GIF only, decode-checked
+`preparePicture` in web/src/ui/modal/uploadavatar.ts; also applied to the own-profile editor. **Rationale:** an SVG uploaded fine but the server cannot thumbnail it, so it showed as a letter tile.
+
+### Card avatar loads full resolution
+**Rationale:** the backend answers a failed thumbnail with a fallback tile (200), not an error, so an onError fallback cannot trigger.
+
+### Start chat confirms before creating a DM
+Commit 833e143b. **Rationale:** the Start chat button creates a new DM on the server; the user asked for a confirmation first.
+
+### Stay on gomuks; try the gomuks FFI mobile path first
+Sable-next was evaluated and not chosen for now. **Rationale (observed):** it is Svelte + Rust (none of echo's React code transfers), about two months old, has one main author, and its CONTRIBUTING.md declines AI-generated contributions. Findings are in learnings/portability.md ("The FFI path", "Sable-next as an alternative base").
+
+### Feature releases in 0.7.x are patch bumps
+0.7.4 was a patch bump. **Rationale:** the 0.7.x convention is patch releases for features (0.7.1 and 0.7.3 followed it).
+
 ## 2026-07-28 (migrated from prior current.md)
 
 ### Architecture

@@ -2,6 +2,16 @@
 
 <!-- Things uncertain, need revisiting, or blocked on -->
 
+## New this session (2026-10-19)
+
+- **Real OS drag-and-drop into the Tauri window is unverified** — only synthetic DOM events were tested. Check a Finder drag and a screenshot-tool drag onto the profile override editor and the upload dialog.
+- **Start chat confirmation not seen in the running app** — the dev app was down; verified by typecheck, lint and tests only. Confirm the prompt appears before a new DM is created.
+- **Drag-and-drop and paste for the own-profile editor (Edit profile)** — offered, unanswered. Currently only the override editor and the upload dialog accept them.
+- **Self timezone and pronoun editing lost with the side panel** — ProfileEditor lacks them. Follow-up: add them to the editor, or decide they are not needed.
+- **Places still showing real names instead of overrides** — room list search name (RoomList.tsx:277), SpaceView, UserInfoMutualRooms, the room autocompleter, Go-side push notifications (pkg/gomuks/pushmessage.go), and group rooms named after several members. Decide per site whether an override should apply (room-bound text must keep real names).
+- **Circle-or-square avatar shape** — requested 2026-10-16; the option does not exist. Scope still undecided: app-wide setting, profile card only, or per-person override.
+- **RELEASE_NOTES.md still holds the 0.7.4 notes, uncommitted** — its header says to clear it between releases. Clear or archive it before the next release.sh run.
+
 ## New this session (2026-10-08)
 
 - **Reaction tooltip blinks away and room list creeps 1px (release 0.7.3, parked by user "ignore for now")** — hovering a reaction pill makes the "who reacted" tooltip blink and disappear; the user thinks it is specific to custom emoji. Each occurrence scrolls the room list down about 1px, so repeated hovering slowly scrolls it. Verified: EventReactions (web/src/ui/timeline/TimelineEvent.tsx ~111-120) portals the tooltip to body and hides it on any capture-phase window scroll; in dev, 10 hovers logged zero scroll events, focus changes or programmatic scroll calls; the release CSS rule for body>div.reaction-tooltip matches dev. Inferred: the 1px scroll fires that listener; the cause of the scroll is unknown. Unanswered: (1) was the same room and reaction hovered in dev as in the release app? (2) does the release app still do it right after a fresh launch? Next step if it persists: instrument a local release build to catch the scroll there. Instrumentation reference copies are parked in .claude/work/mockups/debug-scroll.ts and .claude/work/mockups/vite-debug-sink.ts (not in the source tree).

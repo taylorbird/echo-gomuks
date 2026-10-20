@@ -430,3 +430,25 @@ go vet -tags goolm,sqlite_fts5 ./...
 **Identifying programmatic scrollers:** patch `Element.prototype` `scrollTop` (via `Object.defineProperty`) and wrap `scrollIntoView`, `scrollTo`, `focus`; log `new Error().stack` on each call. Also log capture-phase scroll events and elements appended directly under `body`.
 
 **Reference copies:** `.claude/work/mockups/debug-scroll.ts` and `.claude/work/mockups/vite-debug-sink.ts`. Remove the hooks before committing; they are dev-only and must not reach a release.
+
+## pnpm via corepack is broken on this machine (2026-10-19)
+
+**Symptom:** `pnpm` through corepack fails. Corepack 0.36 looks for `bin/pnpm.cjs`, but pnpm 12.3.4 ships a native binary instead. Fails under the default Node and under fnm 22.23.1.
+
+**Workaround:** run the native binary directly: `~/.cache/node/corepack/v1/pnpm/12.3.4/pnpm`. Remember that web/ is an npm project (see the pnpm gotcha above), so this is only for global-rule work outside web/.
+
+## Playwright WebKit visual harness: setup and recipe (2026-10-19)
+
+**Setup:** Playwright 1.60.0 with WebKit (browser build v2287, cached in ~/Library/Caches/ms-playwright). Installed into the session scratchpad, so the install dies with the session; the recipe below is the durable part.
+
+**Auth cookie:** mint `gomuks_auth` as in the cookie recipe above, but read the **dev** profile at `~/Library/Application Support/dev.tbird.echo-dev/config.yaml`. The recipe above names `dev.tbird.echo`, which is the production profile (see constraints.md, sidecar storage isolation).
+
+**Viewport:** 1512x982 at deviceScaleFactor 2 (the 14-inch MacBook default).
+
+**Selectors:** profile-opening avatars are `div.sender-avatar[data-target-panel="user"]`. Reply quotes also carry `.sender-avatar`, and clicking one jumps to the event, so filter on the data attribute.
+
+**Holding uploads:** `page.route("**/_gomuks/upload**", () => {})` keeps an upload pending, so the uploading state can be screenshotted without sending anything.
+
+**Local-only override:** in a throwaway context, `window.client.store.applySync({ rooms: {}, account_data: {...} })` injects an override without touching the server.
+
+**Homeserver:** https://synapse.mssj.me (well-known on mssj.me). It advertises simplified sliding sync (`org.matrix.simplified_msc3575`).

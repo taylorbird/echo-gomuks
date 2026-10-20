@@ -303,3 +303,35 @@ The `:has()` specificity (0,5,1) beats the element selector (0,0,1), so the most
 **Implementation:** `MainScreen.setSpace()` recursively calls `client.loadSpaceMembers` for any subspace in the selection path. This ensures the current space and all its ancestors have members loaded (needed for transitive membership checks).
 
 **Pattern:** When space selection changes, trigger member loads and don't wait for them to complete — space contents are displayed with the members discovered so far, and the UI updates as members arrive from the server.
+
+## Modal Close Handler Ignores Non-Backdrop Clicks (2026-10-19)
+
+**Gotcha:** the close handler in `ModalCloseContext` (`onClickWrapper` in ui/modal/Modal.tsx) ignores any event whose target is not the backdrop. Passing a click event through, as in `onClick={closeModal}` on a button that contains an icon, silently does nothing. Use `onClick={() => closeModal()}`. This is why the profile card's close X did nothing at first.
+
+## Custom Modal Boxes: Inner Wrapper Must Not Clip (2026-10-19)
+
+**Mechanism:** `div.modal-box-inner` has `overflow: auto` (ui/modal/Lightbox.css). Content that pokes past it lets WebKit scroll the box sideways when a control gets focus or hover (the left edge clips and the close button slides away). It also clips absolutely positioned bars.
+
+**Pattern:** custom boxes (profile-card-box, profile-override-box) set `overflow: visible` on the inner wrapper.
+
+## Colour Tokens: Peach Accent in Dark Mode (2026-10-19)
+
+**Fact:** `--semisecondary-text-color` is `#ffb59a` (peach accent) in dark mode. Do not use it for neutral text.
+
+## Icon Fill: Stroke Icons Need `fill: none` (2026-10-19)
+
+**Gotcha:** a container rule `svg { fill: currentColor }` fills the stroke-drawn icons in `icons/modern/` into solid blobs. Add `&[stroke] { fill: none }` to the rule.
+
+## Media Endpoint `fallback=` Parameter (2026-10-19)
+
+**Behaviour:** the backend media endpoint with a `fallback=` parameter returns the fallback letter tile with status 200 when it cannot thumbnail the file (for example SVG). Without the parameter it returns 500.
+
+## Opening the Profile Card From Scripts (2026-10-19)
+
+`window.mainScreenContext.setRightPanel({type:"user", userID})` opens the profile card. Useful for Playwright checks.
+
+## Profile Card File Map (2026-10-19)
+
+- Card: web/src/ui/profilecard/ (ProfileCard.tsx, CardRow.tsx, SharedRoomsRow.tsx, SecurityRow.tsx, RoomRow.tsx, startdm.ts, open.tsx, ProfileCard.css)
+- Override editor: web/src/ui/modal/ProfileOverrideEditor.tsx
+- Override storage and rules: web/src/api/profileoverrides.ts
